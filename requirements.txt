@@ -1,0 +1,23 @@
+# ─────────────────────────────────────────────
+# CodeMap — AI-Based Codebase Analyzer
+# Python Dependencies
+# ─────────────────────────────────────────────
+
+# Django framework
+Django>=4.2,<5.1
+
+# Celery task queue + Redis backend
+celery>=5.3,<6.0
+redis>=5.0,<6.0
+
+# OpenAI Python SDK
+openai>=1.0,<2.0
+
+# Retry logic for API calls
+tenacity>=8.2,<9.0
+
+# Git operations
+GitPython>=3.1,<4.0
+
+# Environment variable loading
+python-dotenv>=1.0,<2.0

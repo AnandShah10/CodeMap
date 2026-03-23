@@ -1,0 +1,170 @@
+{% extends "analyzer/base.html" %}
+
+{% block title %}Results — {{ project.name }} — CodeMap{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ project.name }}</h1>
+    <p>AI-generated documentation and analysis — {{ project.total_files }} files analyzed</p>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="tabs" id="result-tabs">
+    <button class="tab-btn active" data-tab="overview">📋 Overview</button>
+    <button class="tab-btn" data-tab="architecture">🏗️ Architecture</button>
+    <button class="tab-btn" data-tab="workflow">🔄 Workflow</button>
+    <button class="tab-btn" data-tab="usecase">📊 Use Cases</button>
+    <button class="tab-btn" data-tab="manual">📖 User Manual</button>
+    <button class="tab-btn" data-tab="modules">📦 Modules</button>
+    <button class="tab-btn" data-tab="files">📄 Files</button>
+</div>
+
+<!-- Tab Contents -->
+<div class="card">
+    <!-- Overview -->
+    <div class="tab-content active" id="tab-overview">
+        <div class="markdown-content" id="md-overview"></div>
+    </div>
+
+    <!-- Architecture -->
+    <div class="tab-content" id="tab-architecture">
+        <div class="markdown-content" id="md-architecture"></div>
+    </div>
+
+    <!-- Workflow -->
+    <div class="tab-content" id="tab-workflow">
+        <div class="markdown-content" id="md-workflow"></div>
+    </div>
+
+    <!-- Use Case Diagram -->
+    <div class="tab-content" id="tab-usecase">
+        <h2 style="margin-bottom: 1rem; color: var(--accent-secondary);">Use Case Diagram</h2>
+        <div class="diagram-container">
+            <div class="mermaid" id="usecase-diagram">
+                {{ outputs.usecase_diagram|default:"graph LR\n    A[No diagram available]" }}
+            </div>
+        </div>
+        <details style="margin-top: 1.5rem;">
+            <summary style="cursor: pointer; color: var(--text-secondary); font-weight: 600;">
+                📝 View Mermaid Source
+            </summary>
+            <pre style="margin-top: 0.75rem; background: var(--bg-input); padding: 1rem; border-radius: var(--radius-sm); overflow-x: auto;"><code id="mermaid-source">{{ outputs.usecase_diagram|default:"" }}</code></pre>
+        </details>
+    </div>
+
+    <!-- User Manual -->
+    <div class="tab-content" id="tab-manual">
+        <div class="markdown-content" id="md-manual"></div>
+    </div>
+
+    <!-- Modules -->
+    <div class="tab-content" id="tab-modules">
+        <h2 style="margin-bottom: 1rem; color: var(--accent-secondary);">
+            Module Summaries ({{ module_summaries|length }})
+        </h2>
+        {% for module in module_summaries %}
+        <div class="accordion-item">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>📦 {{ module.module_path }}</span>
+                <span class="file-lang">{{ module.file_count }} files</span>
+            </div>
+            <div class="accordion-body">
+                <div class="markdown-content module-md" data-content="{{ module.summary }}"></div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <div class="empty-icon">📦</div>
+            <h3>No modules found</h3>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Files -->
+    <div class="tab-content" id="tab-files">
+        <h2 style="margin-bottom: 1rem; color: var(--accent-secondary);">
+            File Summaries ({{ file_summaries|length }})
+        </h2>
+        {% for file in file_summaries %}
+        <div class="accordion-item">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <span>📄 {{ file.file_path }}</span>
+                <span class="file-lang">{{ file.language }}</span>
+            </div>
+            <div class="accordion-body">
+                <div class="markdown-content file-md" data-content="{{ file.summary }}"></div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <div class="empty-icon">📄</div>
+            <h3>No files found</h3>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Back to list -->
+<div class="text-center mt-2">
+    <a href="{% url 'analyzer:project_list' %}" class="btn btn-secondary">← Back to Projects</a>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ outputs.overview|default:""|json_script:"raw-overview" }}
+{{ outputs.architecture|default:""|json_script:"raw-architecture" }}
+{{ outputs.workflow|default:""|json_script:"raw-workflow" }}
+{{ outputs.user_manual|default:""|json_script:"raw-manual" }}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Tab switching ─────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Deactivate all
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            // Activate clicked
+            this.classList.add('active');
+            document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ── Render markdown content ───────────────────────────
+    function renderMarkdown(elementId, jsonScriptId) {
+        const raw = JSON.parse(document.getElementById(jsonScriptId).textContent);
+        if (raw) {
+            document.getElementById(elementId).innerHTML = marked.parse(raw);
+        } else {
+            document.getElementById(elementId).innerHTML = '<p style="color:var(--text-muted);">No content available.</p>';
+        }
+    }
+
+    renderMarkdown('md-overview', 'raw-overview');
+    renderMarkdown('md-architecture', 'raw-architecture');
+    renderMarkdown('md-workflow', 'raw-workflow');
+    renderMarkdown('md-manual', 'raw-manual');
+
+    // Render module and file summaries from data attributes
+    document.querySelectorAll('.module-md, .file-md').forEach(el => {
+        const content = el.getAttribute('data-content');
+        if (content) {
+            el.innerHTML = marked.parse(content);
+        }
+    });
+
+    // ── Re-render Mermaid diagrams ────────────────────────
+    try {
+        mermaid.run({ querySelector: '.mermaid' });
+    } catch (e) {
+        console.warn('Mermaid rendering error:', e);
+    }
+});
+
+// ── Accordion toggle ──────────────────────────────────
+function toggleAccordion(header) {
+    const body = header.nextElementSibling;
+    body.classList.toggle('open');
+}
+</script>
+{% endblock %}

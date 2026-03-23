@@ -1,0 +1,158 @@
+{% extends "analyzer/base.html" %}
+
+{% block title %}Analysis Status — {{ project.name }} — CodeMap{% endblock %}
+
+{% block content %}
+<div class="status-container">
+    <div class="page-header">
+        <h1>Analysis Status</h1>
+        <p>{{ project.name }}</p>
+    </div>
+
+    <div class="card text-center" id="status-card">
+        <!-- Status Badge -->
+        <div style="margin-bottom: 1.5rem;">
+            <span class="status-badge status-{{ job.status }}" id="status-badge">
+                <span id="status-icon">
+                    {% if job.status == 'pending' %}⏳
+                    {% elif job.status == 'processing' %}⚙️
+                    {% elif job.status == 'completed' %}✅
+                    {% elif job.status == 'failed' %}❌
+                    {% endif %}
+                </span>
+                <span id="status-text">{{ job.get_status_display }}</span>
+            </span>
+        </div>
+
+        <!-- Spinner (visible during pending/processing) -->
+        {% if job.status == 'pending' or job.status == 'processing' %}
+        <div class="flex-center" style="margin-bottom: 1.5rem;" id="spinner-container">
+            <div class="spinner"></div>
+        </div>
+        {% endif %}
+
+        <!-- Progress Bar -->
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar" style="width: {{ job.progress_percent }}%;"></div>
+        </div>
+
+        <div class="progress-info">
+            <span id="progress-message">{{ job.progress_message }}</span>
+            <span id="progress-percent">{{ job.progress_percent }}%</span>
+        </div>
+
+        <!-- Error Message -->
+        {% if job.status == 'failed' %}
+        <div class="alert alert-error" style="margin-top: 1.5rem; text-align: left;">
+            <strong>Error:</strong> {{ job.error_message }}
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div style="margin-top: 2rem;" id="action-buttons">
+            {% if job.status == 'completed' %}
+                <a href="{% url 'analyzer:project_results' project.id %}" class="btn btn-primary btn-lg">
+                    📄 View Results
+                </a>
+            {% elif job.status == 'failed' %}
+                <a href="{% url 'analyzer:upload' %}" class="btn btn-secondary">
+                    🔄 Try Again
+                </a>
+            {% endif %}
+        </div>
+
+        <!-- Metadata -->
+        <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.85rem;">
+            <p>Project: <strong>{{ project.name }}</strong></p>
+            <p>Upload Type: {{ project.get_upload_type_display }}</p>
+            {% if project.total_files %}
+                <p>Files Found: {{ project.total_files }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const projectId = '{{ project.id }}';
+    const statusUrl = '{% url "analyzer:api_status" project.id %}';
+    const resultsPageUrl = '{% url "analyzer:project_results" project.id %}';
+
+    let polling = null;
+
+    function updateStatus() {
+        fetch(statusUrl)
+            .then(response => response.json())
+            .then(data => {
+                // Update progress bar
+                const progressBar = document.getElementById('progress-bar');
+                const progressMessage = document.getElementById('progress-message');
+                const progressPercent = document.getElementById('progress-percent');
+
+                progressBar.style.width = data.progress_percent + '%';
+                progressMessage.textContent = data.progress_message;
+                progressPercent.textContent = data.progress_percent + '%';
+
+                // Update status badge
+                const statusBadge = document.getElementById('status-badge');
+                const statusText = document.getElementById('status-text');
+                const statusIcon = document.getElementById('status-icon');
+
+                statusBadge.className = 'status-badge status-' + data.status;
+
+                const statusLabels = {
+                    'pending': 'Pending',
+                    'processing': 'Processing',
+                    'completed': 'Completed',
+                    'failed': 'Failed'
+                };
+                const statusIcons = {
+                    'pending': '⏳',
+                    'processing': '⚙️',
+                    'completed': '✅',
+                    'failed': '❌'
+                };
+
+                statusText.textContent = statusLabels[data.status] || data.status;
+                statusIcon.textContent = statusIcons[data.status] || '';
+
+                // Handle completion or failure
+                if (data.status === 'completed') {
+                    clearInterval(polling);
+                    // Hide spinner
+                    const spinner = document.getElementById('spinner-container');
+                    if (spinner) spinner.style.display = 'none';
+                    // Show results button
+                    document.getElementById('action-buttons').innerHTML =
+                        '<a href="' + resultsPageUrl + '" class="btn btn-primary btn-lg">📄 View Results</a>';
+                } else if (data.status === 'failed') {
+                    clearInterval(polling);
+                    const spinner = document.getElementById('spinner-container');
+                    if (spinner) spinner.style.display = 'none';
+                    document.getElementById('action-buttons').innerHTML =
+                        '<a href="/" class="btn btn-secondary">🔄 Try Again</a>';
+                    // Show error
+                    if (data.error_message) {
+                        const card = document.getElementById('status-card');
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-error';
+                        alert.style.marginTop = '1.5rem';
+                        alert.style.textAlign = 'left';
+                        alert.innerHTML = '<strong>Error:</strong> ' + data.error_message;
+                        card.querySelector('.progress-info').after(alert);
+                    }
+                }
+            })
+            .catch(err => console.error('Status poll error:', err));
+    }
+
+    // Start polling every 3 seconds if job is not terminal
+    const currentStatus = '{{ job.status }}';
+    if (currentStatus === 'pending' || currentStatus === 'processing') {
+        polling = setInterval(updateStatus, 3000);
+    }
+});
+</script>
+{% endblock %}

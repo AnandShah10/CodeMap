@@ -1,0 +1,79 @@
+{% extends "analyzer/base.html" %}
+
+{% block title %}Projects — CodeMap{% endblock %}
+{% block nav_projects %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>All Projects</h1>
+    <p>Browse all analyzed projects and their documentation.</p>
+</div>
+
+{% if projects %}
+<table class="project-table">
+    <thead>
+        <tr>
+            <th>Project Name</th>
+            <th>Source</th>
+            <th>Files</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for project in projects %}
+        <tr>
+            <td class="project-name-cell">{{ project.name }}</td>
+            <td>
+                {% if project.upload_type == 'zip' %}📦 ZIP
+                {% else %}🔗 Git{% endif %}
+            </td>
+            <td>{{ project.total_files }}</td>
+            <td>
+                {% with job=project.analysis_job %}
+                {% if job %}
+                    <span class="status-badge status-{{ job.status }}">
+                        {% if job.status == 'pending' %}⏳{% elif job.status == 'processing' %}⚙️{% elif job.status == 'completed' %}✅{% else %}❌{% endif %}
+                        {{ job.get_status_display }}
+                    </span>
+                {% else %}
+                    <span class="status-badge" style="background: var(--bg-input); color: var(--text-muted);">Unknown</span>
+                {% endif %}
+                {% endwith %}
+            </td>
+            <td style="color: var(--text-secondary); font-size: 0.9rem;">
+                {{ project.created_at|date:"M d, Y H:i" }}
+            </td>
+            <td>
+                {% with job=project.analysis_job %}
+                {% if job and job.status == 'completed' %}
+                    <a href="{% url 'analyzer:project_results' project.id %}" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
+                        📄 Results
+                    </a>
+                {% elif job and job.status == 'processing' or job and job.status == 'pending' %}
+                    <a href="{% url 'analyzer:project_status' project.id %}" class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
+                        ⏳ Status
+                    </a>
+                {% else %}
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">—</span>
+                {% endif %}
+                {% endwith %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">🗂️</div>
+        <h3>No projects yet</h3>
+        <p>Upload your first project to get started.</p>
+        <a href="{% url 'analyzer:upload' %}" class="btn btn-primary" style="margin-top: 1rem;">
+            🚀 Upload Project
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

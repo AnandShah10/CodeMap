@@ -1,0 +1,151 @@
+{% extends "analyzer/base.html" %}
+
+{% block title %}Upload Project — CodeMap{% endblock %}
+{% block nav_upload %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Analyze Your Codebase</h1>
+    <p>Upload a ZIP file or provide a Git repository URL and let AI generate comprehensive documentation for your project.</p>
+</div>
+
+<div style="max-width: 700px; margin: 0 auto;">
+    <form method="post" enctype="multipart/form-data" class="card" id="upload-form">
+        {% csrf_token %}
+
+        <!-- Upload Type Toggle -->
+        <div class="form-group">
+            <label class="form-label">Source Type</label>
+            <div class="radio-group">
+                <div class="radio-option">
+                    <input type="radio" name="upload_type" value="zip" id="type-zip"
+                           {% if form.upload_type.value == 'zip' or not form.upload_type.value %}checked{% endif %}>
+                    <label for="type-zip">📦 ZIP File</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" name="upload_type" value="git" id="type-git"
+                           {% if form.upload_type.value == 'git' %}checked{% endif %}>
+                    <label for="type-git">🔗 Git Repository</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Name -->
+        <div class="form-group">
+            <label class="form-label" for="project-name">Project Name</label>
+            <input type="text" name="project_name" class="form-input" id="project-name"
+                   placeholder="e.g., My Awesome Project (auto-detected if empty)"
+                   value="{{ form.project_name.value|default:'' }}">
+            <p class="form-hint">Optional — automatically derived from filename or repo URL if left blank.</p>
+        </div>
+
+        <!-- ZIP Upload Section -->
+        <div class="form-group" id="zip-section">
+            <label class="form-label">Upload ZIP File</label>
+            <div class="file-upload-zone" id="drop-zone">
+                <div class="upload-icon">📁</div>
+                <p><strong>Click to browse</strong> or drag & drop your ZIP file here</p>
+                <p class="form-hint" style="margin-top: 0.5rem;">Maximum file size: 500 MB</p>
+                <input type="file" name="zip_file" class="file-input" id="zip-file" accept=".zip">
+                <div class="file-name-display" id="file-name"></div>
+            </div>
+            {% if form.zip_file.errors %}
+                <p class="form-hint" style="color: var(--danger);">{{ form.zip_file.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Git URL Section -->
+        <div class="form-group" id="git-section" style="display: none;">
+            <label class="form-label" for="git-url">Repository URL</label>
+            <input type="url" name="git_url" class="form-input" id="git-url"
+                   placeholder="https://github.com/user/repo.git"
+                   value="{{ form.git_url.value|default:'' }}">
+            <p class="form-hint">Enter the full URL. Supports GitHub, GitLab, Bitbucket, and other Git hosts.</p>
+            {% if form.git_url.errors %}
+                <p class="form-hint" style="color: var(--danger);">{{ form.git_url.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Non-field errors -->
+        {% if form.non_field_errors %}
+        <div class="alert alert-error">
+            {% for error in form.non_field_errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="submit-btn">
+            🚀 Start Analysis
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const typeZip = document.getElementById('type-zip');
+    const typeGit = document.getElementById('type-git');
+    const zipSection = document.getElementById('zip-section');
+    const gitSection = document.getElementById('git-section');
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('zip-file');
+    const fileNameDisplay = document.getElementById('file-name');
+
+    // Toggle sections based on upload type
+    function toggleSections() {
+        if (typeZip.checked) {
+            zipSection.style.display = 'block';
+            gitSection.style.display = 'none';
+        } else {
+            zipSection.style.display = 'none';
+            gitSection.style.display = 'block';
+        }
+    }
+
+    typeZip.addEventListener('change', toggleSections);
+    typeGit.addEventListener('change', toggleSections);
+    toggleSections();
+
+    // File input display
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            fileNameDisplay.textContent = '📎 ' + this.files[0].name;
+            dropZone.style.borderColor = 'var(--accent-primary)';
+        }
+    });
+
+    // Drag and drop
+    ['dragenter', 'dragover'].forEach(event => {
+        dropZone.addEventListener(event, function(e) {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+        });
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            fileNameDisplay.textContent = '📎 ' + files[0].name;
+            dropZone.style.borderColor = 'var(--accent-primary)';
+        }
+    });
+
+    // Submit loading state
+    document.getElementById('upload-form').addEventListener('submit', function() {
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner" style="width:20px;height:20px;border-width:2px;"></span> Uploading...';
+    });
+});
+</script>
+{% endblock %}
