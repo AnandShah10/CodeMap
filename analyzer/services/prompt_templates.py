@@ -384,7 +384,7 @@ MINDMAP_PROMPT = DIAGRAM_BASE_INSTRUCTIONS + """
 # ──────────────────────────────────────────────
 # User Manual
 # ──────────────────────────────────────────────
-USER_MANUAL_PROMPT = """You are a technical writer. Based on the project information below, generate a user manual.
+USER_MANUAL_PROMPT = """You are a senior technical writer and software architect. Based on the project information below, generate a comprehensive and highly detailed user manual.
 
 **Project Name:** {project_name}
 
@@ -398,18 +398,22 @@ USER_MANUAL_PROMPT = """You are a technical writer. Based on the project informa
 {workflow}
 
 **Instructions:**
-Generate a comprehensive user manual that includes:
-1. **Introduction** — Brief description of what the system does and who it's for.
-2. **Getting Started** — Prerequisites, installation, first-time setup.
-3. **Features Guide** — Detailed section for each feature:
-   - What it does
-   - How to use it (step-by-step)
-   - Expected inputs and outputs
-4. **Navigation Guide** — How to navigate through the application.
-5. **Troubleshooting** — Common issues and how to resolve them.
-6. **FAQ** — Frequently asked questions.
+Generate a professional, detailed user manual that includes:
+1. **Executive Summary** — What the system does and its core value proposition.
+2. **Technical Architecture & Logic** — **CRITICAL SECTION:** Provide an in-depth explanation of the working code.
+   - Describe the main technical components and their internal logic.
+   - Explain how key algorithms or processes are implemented in the code.
+   - Mention specific patterns or technical decisions that drive the system.
+3. **Getting Started** — Prerequisites, installation, and first-time configuration.
+4. **Features Guide** — In-depth breakdown for every feature:
+   - Functional purpose.
+   - Step-by-step usage instructions.
+   - Detailed inputs, outputs, and edge cases.
+5. **System Workflow** — A detailed walkthrough of the end-to-end data lifecycle.
+6. **Navigation & UI Guide** — How to use the interface effectively.
+7. **Troubleshooting & Maintenance** — Common issues, logs, and resolution steps.
 
-Format the output as clean Markdown with proper headings, numbered lists, and bullet points.
-Make it user-friendly and accessible to non-technical users where possible.
+Format the output as clean Markdown with clear headings, sub-headings, and technical precision.
+The manual should be useful for both end-users and developers who want to understand the "how" behind the application.
 
 **User Manual:**"""
