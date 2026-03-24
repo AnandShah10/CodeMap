@@ -18,6 +18,10 @@ from pathlib import Path
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
+from django.core.mail import send_mail
+from django.urls import reverse
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 logger = logging.getLogger('analyzer')
 
@@ -143,7 +147,8 @@ def analyze_project(self, job_id: str) -> dict:
                 )
             except Exception as e:
                 logger.warning(f"Failed to summarize {file_info['path']}: {e}")
-                summary = f"[Analysis failed: {str(e)[:100]}]"
+                err_str = str(e)
+                summary = f"[Analysis failed: {err_str[:100]}]"
 
             FileSummary.objects.create(
                 project=project,
@@ -205,7 +210,8 @@ def analyze_project(self, job_id: str) -> dict:
                 mod_summary = ai.summarize_module(module_path, module_files)
             except Exception as e:
                 logger.warning(f"Failed to summarize module {module_path}: {e}")
-                mod_summary = f"[Module analysis failed: {str(e)[:100]}]"
+                err_str = str(e)
+                mod_summary = f"[Module analysis failed: {err_str[:100]}]"
 
             ModuleSummary.objects.create(
                 project=project,
@@ -261,13 +267,38 @@ def analyze_project(self, job_id: str) -> dict:
         else:
             workflow = existing_outputs['workflow']
 
-        # 5d. Use Case Diagram (Mermaid)
-        if 'usecase_diagram' not in existing_outputs:
-            _update_progress(job, 'Generating use case diagram...', 92)
-            usecase_diagram = ai.generate_usecase_diagram(project.name, overview)
-            ProjectOutput.objects.create(
-                project=project, output_type='usecase_diagram', content=usecase_diagram
-            )
+        # 5d. Diagrams (UML & Non-UML)
+        diagram_types = [
+            'class_diagram', 'object_diagram', 'component_diagram', 'composite_structure_diagram',
+            'package_diagram', 'deployment_diagram', 'profile_diagram', 'usecase_diagram',
+            'activity_diagram', 'state_diagram', 'sequence_diagram', 'communication_diagram',
+            'interaction_overview_diagram', 'timing_diagram', 'er_diagram', 'c4_context_diagram',
+            'workflow_flowchart', 'mindmap', 'project_structure'
+        ]
+        
+        # Prepare file list for diagram context
+        file_list = "\n".join([fs['file_path'] for fs in file_summaries_data])
+        
+        for i, dtype in enumerate(diagram_types):
+            if dtype not in existing_outputs:
+                progress = 90 + int((i / len(diagram_types)) * 8)
+                display_name = dtype.replace('_', ' ').title()
+                _update_progress(job, f'Generating {display_name}...', progress)
+                
+                # Context for diagram: Use overview, architecture, and file list
+                diagram_context = (
+                    f"Overview:\n{overview}\n\n"
+                    f"Architecture:\n{architecture}\n\n"
+                    f"Files:\n{file_list}"
+                )
+                
+                try:
+                    diagram_code = ai.generate_diagram(dtype, project.name, diagram_context)
+                    ProjectOutput.objects.create(
+                        project=project, output_type=dtype, content=diagram_code
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to generate diagram {dtype}: {e}")
 
         # 5e. User Manual
         if 'user_manual' not in existing_outputs:
@@ -288,6 +319,8 @@ def analyze_project(self, job_id: str) -> dict:
             'status', 'progress_message', 'progress_percent', 'completed_at'
         ])
 
+        _send_completion_notification(job)
+
         logger.info(f"Analysis completed for project: {project.name}")
         return {
             'status': 'completed',
@@ -305,6 +338,8 @@ def analyze_project(self, job_id: str) -> dict:
         job.save(update_fields=[
             'status', 'error_message', 'progress_message', 'completed_at'
         ])
+        
+        _send_completion_notification(job)
         return {'status': 'failed', 'error': str(e)[:500]}
 
 
@@ -321,3 +356,53 @@ def _update_progress(job, message: str, percent: int) -> None:
     job.progress_percent = percent
     job.save(update_fields=['progress_message', 'progress_percent'])
     logger.info(f"[{percent}%] {message}")
+
+
+def _send_completion_notification(job):
+    """Send an email notification to the user when analysis is done."""
+    project = job.project
+    user = project.user
+    
+    if not user or not user.email:
+        logger.info(f"No email found for user of project {project.name}. Skipping notification.")
+        return
+
+    subject = f"CodeMap Analysis Complete: {project.name}"
+    if job.status == 'failed':
+        subject = f"CodeMap Analysis Failed: {project.name}"
+    
+    # Generate the link to view results
+    # Note: In a production environment, use a real domain instead of localhost
+    site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+    results_url = f"{site_url}{reverse('analyzer:project_results', kwargs={'project_id': project.id})}"
+    subject = f"CodeMap Analysis: {project.name} - {job.status.title()}"
+    
+    # Build absolute results URL
+    site_url = getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000')
+    results_url = f"{site_url}/projects/{project.id}/results/"
+    if job.status != 'completed':
+        results_url = f"{site_url}/projects/{project.id}/status/"
+
+    context = {
+        'project': project,
+        'job': job,
+        'results_url': results_url,
+        'current_year': timezone.now().year,
+    }
+
+    html_message = render_to_string('analyzer/emails/analysis_completion.html', context)
+    plain_message = strip_tags(html_message)
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'CodeMap <noreply@codemap.ai>')
+    
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            from_email,
+            [user.email],
+            html_message=html_message,
+            fail_silently=True
+        )
+        logger.info(f"Notification email sent to {user.email} for project {project.id}")
+    except Exception as e:
+        logger.error(f"Failed to send notification email: {str(e)}")

@@ -14,7 +14,7 @@ import logging
 import re
 
 from django.conf import settings
-from openai import AzureOpenAI
+from openai import OpenAI, AzureOpenAI
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -39,8 +39,19 @@ class AIService:
     """
 
     def __init__(self):
-        """Initialize the AI service with OpenAI client and settings."""
-        self.client = AzureOpenAI(api_key=settings.OPENAI_API_KEY,azure_endpoint=settings.AZURE_ENDPOINT,azure_deployment=settings.AZURE_DEPLOYMENT,api_version=settings.AZURE_API_VERSION)
+        """Initialize the AI service with OpenAI client (Azure or standard)."""
+        if settings.AZURE_ENDPOINT:
+            self.client = AzureOpenAI(
+                api_key=settings.OPENAI_API_KEY,
+                azure_endpoint=settings.AZURE_ENDPOINT,
+                azure_deployment=settings.AZURE_DEPLOYMENT,
+                api_version=settings.AZURE_API_VERSION
+            )
+        else:
+            self.client = OpenAI(
+                api_key=settings.OPENAI_API_KEY
+            )
+            
         self.model = settings.OPENAI_MODEL
         self.max_tokens = settings.OPENAI_MAX_TOKENS
         # Reserve tokens for the prompt template + response
@@ -278,26 +289,58 @@ class AIService:
         )
         return self._call_api(prompt)
 
-    def generate_usecase_diagram(self, project_name: str, overview: str) -> str:
+    def generate_diagram(self, output_type: str, project_name: str, context: str, current_code: str = None, error_message: str = None) -> str:
         """
-        Generate a Mermaid use case diagram.
+        Generate a Mermaid diagram of a specific type.
+        Can also fix existing broken code if error_message is provided.
 
         Args:
+            output_type: The type of diagram (e.g., 'class_diagram', 'er_diagram').
             project_name: Name of the project.
-            overview: The previously generated project overview.
+            context: Contextual information (overview, architecture, or summaries).
+            current_code: Optional previous broken code to fix.
+            error_message: Optional error message from a failed render attempt.
 
         Returns:
             Mermaid diagram code string.
         """
-        prompt = prompts.USECASE_DIAGRAM_PROMPT.format(
+        # Map output_type to the corresponding prompt template
+        prompt_name = f"{output_type.upper()}_PROMPT"
+        # Handle aliases like project_structure -> project_structure_diagram
+        if not hasattr(prompts, prompt_name) and hasattr(prompts, f"{prompt_name}_DIAGRAM"):
+            prompt_name = f"{prompt_name}_DIAGRAM"
+            
+        prompt_template = getattr(prompts, prompt_name, None)
+        
+        if not prompt_template:
+            # Fallback to a generic flowchart if type not found
+            logger.warning(f"No prompt template found for {output_type}, falling back to workflow flowchart.")
+            prompt_template = prompts.WORKFLOW_FLOWCHART_PROMPT
+
+        main_prompt = prompt_template.format(
             project_name=project_name,
-            overview=self._truncate(overview),
+            context=self._truncate(context),
         )
-        result = self._call_api(prompt)
+        
+        if current_code and error_message:
+            fix_instructions = f"\n\n### CRITICAL: FIX PREVIOUS SYNTAX ERROR\n"
+            fix_instructions += f"The previous attempt failed to render due to a Mermaid syntax error.\n"
+            fix_instructions += f"**Error Message:** {error_message}\n"
+            fix_instructions += f"**Broken Code:**\n```mermaid\n{current_code}\n```\n\n"
+            fix_instructions += f"**Instructions to Fix:**\n"
+            fix_instructions += f"1. Analyze the error message (e.g., unexpected token, missing newline).\n"
+            fix_instructions += f"2. **CRITICAL:** Ensure EVERY relationship is on its own line. Do NOT clump nodes together (e.g., fix `NodeA nodeB` to `NodeA` and `NodeB` on separate lines).\n"
+            fix_instructions += f"3. Avoid putting too many nodes or connections on a single line.\n"
+            fix_instructions += f"4. Check for unclosed brackets [] or parentheses ().\n"
+            fix_instructions += f"5. Provide ONLY the FULL corrected Mermaid code for a `{output_type.replace('_diagram', '')}` diagram.\n"
+            fix_instructions += f"6. **NO CLUMPING:** Ensure there is either a newline or a clear space between all keywords and node names (e.g., `Google Fonts A2` instead of `Google FontsA2`)."
+            main_prompt += fix_instructions
+
+        result = self._call_api(main_prompt)
 
         # Clean up: remove markdown code fences, and any %%{init ...}%% blocks
-        result = re.sub(r'^```(?:mermaid)?\s*\n?', '', result)
-        result = re.sub(r'\n?```\s*$', '', result)
+        result = re.sub(r'^```(?:mermaid)?\s*\n?', '', result, flags=re.MULTILINE)
+        result = re.sub(r'\n?```\s*$', '', result, flags=re.MULTILINE)
         result = re.sub(r'%%\{init[^\}]*\}%%\n?', '', result)
         
         return result.strip()

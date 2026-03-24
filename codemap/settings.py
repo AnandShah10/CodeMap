@@ -244,3 +244,5 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': False,
 }
+
+CSRF_TRUSTED_ORIGINS = ['https://5d44-2405-201-2005-1965-d941-af28-f69b-9f2f.ngrok-free.app']

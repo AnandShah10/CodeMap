@@ -153,8 +153,29 @@ class ProjectOutput(models.Model):
         ('overview', 'Project Overview'),
         ('architecture', 'Architecture Explanation'),
         ('workflow', 'Workflow Explanation'),
-        ('usecase_diagram', 'Use Case Diagram (Mermaid)'),
         ('user_manual', 'User Manual'),
+        # UML Structural Diagrams
+        ('class_diagram', 'Class Diagram'),
+        ('object_diagram', 'Object Diagram'),
+        ('component_diagram', 'Component Diagram'),
+        ('composite_structure_diagram', 'Composite Structure Diagram'),
+        ('package_diagram', 'Package Diagram'),
+        ('deployment_diagram', 'Deployment Diagram'),
+        ('profile_diagram', 'Profile Diagram'),
+        # UML Behavioral Diagrams
+        ('usecase_diagram', 'Use Case Diagram'),
+        ('activity_diagram', 'Activity Diagram'),
+        ('state_diagram', 'State Machine Diagram'),
+        ('sequence_diagram', 'Sequence Diagram'),
+        ('communication_diagram', 'Communication Diagram'),
+        ('interaction_overview_diagram', 'Interaction Overview Diagram'),
+        ('timing_diagram', 'Timing Diagram'),
+        # Non-UML Diagrams
+        ('er_diagram', 'Entity-Relationship Diagram (ERD)'),
+        ('c4_context_diagram', 'C4 System Context Diagram'),
+        ('workflow_flowchart', 'Workflow Flowchart'),
+        ('mindmap', 'Mind Map'),
+        ('project_structure', 'Project Structure (File Tree)'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

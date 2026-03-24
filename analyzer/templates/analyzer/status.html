@@ -93,6 +93,56 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsPageUrl = '{% url "analyzer:project_results" project.id %}';
 
     let polling = null;
+    // Web Notifications & Audio Logic
+    const audioSuccess = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    const audioError = new Audio('https://assets.mixkit.co/active_storage/sfx/2864/2864-preview.mp3');
+    let hasNotified = false;
+
+    function requestNotificationPermission() {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                const hint = document.getElementById('notification-hint');
+                if (hint) hint.remove();
+                new Notification("Notifications Enabled", { body: "You will receive an alert once the analysis is ready." });
+            }
+        });
+    }
+
+    if ("Notification" in window) {
+        if (Notification.permission === "default") {
+            // Create a small UI hint if permission hasn't been asked yet
+            const hint = document.createElement('div');
+            hint.id = 'notification-hint';
+            hint.style = 'margin-top: 1rem; padding: 1rem; background: var(--bg-input); border-radius: var(--radius-sm); border: 1px solid var(--accent-primary); color: var(--text-secondary); font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;';
+            hint.innerHTML = `
+                <span>🔔 Want to be notified when analysis completes?</span>
+                <button onclick="requestNotificationPermission()" class="btn btn-primary btn-sm">Enable Alerts</button>
+            `;
+            document.querySelector('.card').appendChild(hint);
+        } else if (Notification.permission === "denied") {
+            console.log("Notifications blocked by user.");
+        }
+    }
+
+    function triggerWebNotification(title, message, isError = false) {
+        if (hasNotified) return;
+        hasNotified = true;
+
+        // Play sound
+        if (isError) {
+            audioError.play().catch(e => console.log("Audio play blocked"));
+        } else {
+            audioSuccess.play().catch(e => console.log("Audio play blocked"));
+        }
+
+        // Show Browser Notification
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(title, {
+                body: message,
+                icon: '/static/analyzer/images/favicon.png' // Adjust if you have an icon
+            });
+        }
+    }
 
     function updateStatus() {
         fetch(statusUrl)
@@ -135,6 +185,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Handle completion or failure
                 if (data.status === 'completed') {
                     clearInterval(polling);
+                    triggerWebNotification("Analysis Complete!", "Your codebase analysis for '{{ project.name }}' is ready.");
+                    
                     // Hide spinner
                     const spinner = document.getElementById('spinner-container');
                     if (spinner) spinner.style.display = 'none';
@@ -143,6 +195,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<a href="' + resultsPageUrl + '" class="btn btn-primary btn-lg">📄 View Results</a>';
                 } else if (data.status === 'failed' || data.status === 'cancelled') {
                     clearInterval(polling);
+                    if (data.status === 'failed') {
+                        triggerWebNotification("Analysis Failed", "Something went wrong with the analysis of '{{ project.name }}'.", true);
+                    }
+                    
                     const spinner = document.getElementById('spinner-container');
                     if (spinner) spinner.style.display = 'none';
                     

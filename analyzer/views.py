@@ -4,16 +4,20 @@ Views for the CodeMap Analyzer.
 Provides both HTML template views and JSON API endpoints
 for uploading projects, checking status, and viewing results.
 """
+import io
 import json
 import logging
-
-from django.http import JsonResponse
+import markdown
+from xhtml2pdf import pisa
+from django.template.loader import get_template
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
+from django.utils import timezone
 
 from .forms import ProjectUploadForm
 from .models import AnalysisJob, FileSummary, ModuleSummary, Project, ProjectOutput
@@ -132,6 +136,206 @@ def project_results(request, project_id):
         'file_summaries': file_summaries,
         'module_summaries': module_summaries,
     })
+
+
+@require_POST
+@login_required
+def api_retry_diagram(request, project_id, output_type):
+    """
+    Regenerate a specific diagram for a project.
+    """
+    try:
+        project = get_object_or_404(Project, id=project_id, user=request.user)
+        logger.info(f"Retrying diagram '{output_type}' for project {project_id}")
+        
+        # Parse optional fix parameters from request body
+        error_message = None
+        current_code = None
+        if request.body:
+            try:
+                data = json.loads(request.body)
+                error_message = data.get('error_message')
+                current_code = data.get('current_code')
+                
+                if error_message:
+                    # If it's a dict from Mermaid's parseError, extract the string representation
+                    if isinstance(error_message, dict):
+                        error_message = error_message.get('str') or error_message.get('message') or str(error_message)
+                    
+                    # Safely log a preview of the error message for debugging
+                    safe_msg = str(error_message)
+                    logger.info(f"Received error message for fixing: {safe_msg[:100]}...")
+            except (json.JSONDecodeError, TypeError):
+                pass
+                
+        from analyzer.services.ai_service import AIService
+        from analyzer.models import ProjectOutput
+        
+        ai = AIService()
+        
+        # Get project context (overview and architecture)
+        outputs = {
+            po.output_type: po.content 
+            for po in ProjectOutput.objects.filter(project=project, output_type__in=['overview', 'architecture'])
+        }
+        
+        overview = outputs.get('overview', '')
+        architecture = outputs.get('architecture', '')
+        
+        # Include file list for better context (especially for project_structure)
+        from analyzer.models import FileSummary
+        file_list = "\n".join([fs.file_path for fs in FileSummary.objects.filter(project=project)])
+        
+        context = (
+            f"Overview:\n{overview}\n\n"
+            f"Architecture:\n{architecture}\n\n"
+            f"Project Files:\n{file_list}"
+        )
+        
+        logger.debug(f"Prompt context prepared ({len(context)} chars)")
+        diagram_code = ai.generate_diagram(
+            output_type, 
+            project.name, 
+            context, 
+            current_code=str(current_code) if current_code else None, 
+            error_message=str(error_message) if error_message else None
+        )
+        logger.debug(f"AI returned code ({len(diagram_code)} chars)")
+
+        # Update or create output
+        obj, created = ProjectOutput.objects.update_or_create(
+            project=project,
+            output_type=output_type,
+            defaults={'content': diagram_code}
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'content': diagram_code
+        })
+    except Exception as e:
+        logger.error(f"Retry failed for {output_type}: {e}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+def download_output(request, project_id, output_type):
+    """Download a specific project output as a Markdown file."""
+    project = get_object_or_404(Project, id=project_id, user=request.user)
+    output = get_object_or_404(ProjectOutput, project=project, output_type=output_type)
+    
+    filename = f"{project.name}_{output_type}.md"
+    content = output.content
+    
+    # If it's a diagram, wrap it in a code block for better markdown viewing
+    if '_diagram' in output_type or output_type in ['workflow_flowchart', 'mindmap', 'project_structure']:
+        content = f"## {output.get_output_type_display()}\n\n```mermaid\n{content}\n```"
+    else:
+        content = f"# {output.get_output_type_display()}\n\n{content}"
+
+    response = HttpResponse(content, content_type='text/markdown')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def download_full_report(request, project_id):
+    """Download all project outputs aggregated into a single Markdown report."""
+    project = get_object_or_404(Project, id=project_id, user=request.user)
+    outputs = ProjectOutput.objects.filter(project=project).order_by('output_type')
+    
+    report_lines = [f"# CodeMap Analysis Report: {project.name}", f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M')}", ""]
+    
+    # Define preferred order
+    order = ['overview', 'architecture', 'workflow', 'user_manual']
+    
+    # Filter for text outputs first
+    text_outputs = [o for o in outputs if o.output_type in order]
+    text_outputs.sort(key=lambda x: order.index(x.output_type) if x.output_type in order else 99)
+    
+    for opt in text_outputs:
+        report_lines.append(f"## {opt.get_output_type_display()}")
+        report_lines.append(opt.content)
+        report_lines.append("")
+
+    # Then append diagrams
+    diagram_outputs = [o for o in outputs if o.output_type not in order]
+    if diagram_outputs:
+        report_lines.append("## Project Diagrams")
+        for opt in diagram_outputs:
+            report_lines.append(f"### {opt.get_output_type_display()}")
+            report_lines.append("```mermaid")
+            report_lines.append(opt.content)
+            report_lines.append("```")
+            report_lines.append("")
+
+    full_content = "\n".join(report_lines)
+    filename = f"{project.name}_Full_Report.md"
+    
+    response = HttpResponse(full_content, content_type='text/markdown')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def download_pdf_report(request, project_id):
+    """Generates and downloads a comprehensive PDF report of the project analysis."""
+    try:
+        project = get_object_or_404(Project, id=project_id, user=request.user)
+        
+        # Try to find the latest successful job
+        job = AnalysisJob.objects.filter(project=project, status='completed').latest('created_at')
+        
+        outputs_qs = ProjectOutput.objects.filter(project_id=project.id)
+        
+        # Split into text documentation and diagrams
+        doc_types = ['overview', 'architecture', 'workflow', 'user_manual']
+        doc_outputs = {out.output_type: markdown.markdown(out.content, extensions=['fenced_code', 'tables']) 
+                       for out in outputs_qs if out.output_type in doc_types}
+        
+        diagram_outputs = [out for out in outputs_qs if out.output_type not in doc_types]
+        
+        # Fetch file and module summaries
+        file_summaries = FileSummary.objects.filter(project=project).order_by('file_path')
+        module_summaries = ModuleSummary.objects.filter(project=project).order_by('module_path')
+        
+        context = {
+            'project': project,
+            'job': job,
+            'outputs': doc_outputs,
+            'diagrams': diagram_outputs,
+            'file_summaries': file_summaries,
+            'module_summaries': module_summaries,
+        }
+        
+        # Render HTML template
+        template = get_template('analyzer/pdf_report.html')
+        html = template.render(context)
+        
+        # Create a PDF
+        response = HttpResponse(content_type='application/pdf')
+        filename = f"{project.name.replace(' ', '_')}_Analysis_Report.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        # Using CreatePDF which is more stable for Django responses
+        pisa_status = pisa.CreatePDF(
+            io.BytesIO(html.encode("UTF-8")),
+            dest=response,
+            encoding='UTF-8'
+        )
+        
+        if not pisa_status.err:
+            return response
+            
+        return HttpResponse(f"PDF Generation Error: {pisa_status.err}", status=500)
+
+    except AnalysisJob.DoesNotExist:
+        return HttpResponse("No completed analysis found for this project.", status=404)
+    except Exception as e:
+        # Return the error message to help debugging
+        import traceback
+        return HttpResponse(f"Internal Error: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status=500)
+
 
 
 @require_POST

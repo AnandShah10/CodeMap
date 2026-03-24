@@ -17,9 +17,13 @@ urlpatterns = [
     path('projects/', views.project_list, name='project_list'),
     path('projects/<uuid:project_id>/status/', views.project_status, name='project_status'),
     path('projects/<uuid:project_id>/results/', views.project_results, name='project_results'),
+    path('projects/<uuid:project_id>/diagram/<str:output_type>/retry/', views.api_retry_diagram, name='api_retry_diagram'),
     path('projects/<uuid:project_id>/cancel/', views.cancel_project, name='cancel_project'),
     path('projects/<uuid:project_id>/restart/', views.restart_project, name='restart_project'),
     path('projects/<uuid:project_id>/resume/', views.resume_project, name='resume_project'),
+    path('projects/<uuid:project_id>/download/full/', views.download_full_report, name='download_full_report'),
+    path('projects/<uuid:project_id>/download/full/pdf/', views.download_pdf_report, name='download_pdf_report'),
+    path('projects/<uuid:project_id>/download/<str:output_type>/', views.download_output, name='download_output'),
 
     # ── JSON API Endpoints ───────────────────────────────
     path('api/upload/', views.api_upload, name='api_upload'),
