@@ -68,7 +68,7 @@
             {% else %}
                 <form method="POST" action="{% url 'analyzer:cancel_project' project.id %}" style="display: inline;" id="cancel-form">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger" style="background-color: var(--error); color: white; border: none;">⏹️ Stop Analysis</button>
+                    <button type="submit" class="btn btn-danger" style="background-color: var(--danger); color: white; border: none;">⏹️ Stop Analysis</button>
                 </form>
             {% endif %}
         </div>
