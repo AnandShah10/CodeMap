@@ -169,7 +169,7 @@ USECASE_DIAGRAM_PROMPT = """You are an expert software architect and UML designe
 4. Group related use cases using packages/rectangles.
 5. Show relationships between actors and use cases.
 
-**Important:** Output ONLY the Mermaid diagram code, starting with the diagram type declaration. Do not wrap it in markdown code fences. Use valid Mermaid syntax that renders correctly.
+**Important:** Output ONLY the Mermaid diagram code. Do NOT wrap it in markdown code fences (```). Do NOT include any `%%{{init...}}%%` blocks at the top. Use valid Mermaid syntax that renders correctly.
 
 Example format:
 graph LR

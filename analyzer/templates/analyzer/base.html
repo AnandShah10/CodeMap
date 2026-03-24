@@ -20,14 +20,26 @@
 <body>
     <!-- Navbar -->
     <nav class="navbar">
-        <a href="{% url 'analyzer:upload' %}" class="navbar-brand">
-            <span class="logo-icon">🗺️</span>
-            CodeMap
+        <a href="{% url 'analyzer:landing' %}" class="logo">
+            <span>CodeMap</span>
         </a>
         <ul class="navbar-nav">
             <li><a href="{% url 'analyzer:upload' %}" class="{% block nav_upload %}{% endblock %}">Upload</a></li>
             <li><a href="{% url 'analyzer:project_list' %}" class="{% block nav_projects %}{% endblock %}">Projects</a></li>
-            <li><a href="{% url 'admin:index' %}">Admin</a></li>
+            {% if request.user.is_authenticated %}
+                <li>
+                    <span class="nav-text" style="color: var(--text-secondary); margin-right: 1rem;">
+                        👤 {{ request.user.username|truncatechars:15 }}
+                    </span>
+                    <form action="{% url 'analyzer:logout' %}" method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" style="background:none; border:none; color:inherit; cursor:pointer; font:inherit; padding:0.5rem 1rem; opacity: 0.8; transition: opacity 0.2s;">Logout</button>
+                    </form>
+                </li>
+            {% else %}
+                <li><a href="{% url 'analyzer:login' %}">Log in</a></li>
+                <li><a href="{% url 'analyzer:register' %}">Sign up</a></li>
+            {% endif %}
         </ul>
     </nav>
 
@@ -43,7 +55,7 @@
     {% endif %}
 
     <!-- Main Content -->
-    <main class="container">
+    <main class="{% if request.resolver_match.url_name != 'landing' %}container{% endif %}">
         {% block content %}{% endblock %}
     </main>
 
@@ -52,7 +64,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             mermaid.initialize({
-                startOnLoad: true,
+                startOnLoad: false,
                 theme: 'dark',
                 themeVariables: {
                     darkMode: true,

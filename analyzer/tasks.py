@@ -66,16 +66,18 @@ def analyze_project(self, job_id: str) -> dict:
             settings.MEDIA_ROOT, 'projects', 'extracted', str(project.id)
         )
 
-        if project.upload_type == 'zip' and project.source_file:
-            zip_path = project.source_file.path
-            extracted_path = extract_zip(zip_path, project_dir)
-        elif project.upload_type == 'git' and project.source_url:
-            extracted_path = clone_repo(project.source_url, project_dir)
-        else:
-            raise ValueError("Invalid project configuration: no source file or URL")
+        extracted_path = project.extracted_path
+        if not extracted_path or not os.path.exists(extracted_path):
+            if project.upload_type == 'zip' and project.source_file:
+                zip_path = project.source_file.path
+                extracted_path = extract_zip(zip_path, project_dir)
+            elif project.upload_type == 'git' and project.source_url:
+                extracted_path = clone_repo(project.source_url, project_dir)
+            else:
+                raise ValueError("Invalid project configuration: no source file or URL")
 
-        project.extracted_path = extracted_path
-        project.save(update_fields=['extracted_path'])
+            project.extracted_path = extracted_path
+            project.save(update_fields=['extracted_path'])
 
         # ── Step 2: Traverse and filter files ────────────────
         _update_progress(job, 'Scanning project files...', 15)
@@ -98,6 +100,11 @@ def analyze_project(self, job_id: str) -> dict:
         file_summaries_data = []
         total_files = len(relevant_files)
 
+        # Pre-load existing file summaries to allow for resumes
+        existing_file_summaries = {
+            fs.file_path: fs for fs in FileSummary.objects.filter(project=project)
+        }
+
         for i, file_info in enumerate(relevant_files, 1):
             # Update progress (20% → 60% for file summaries)
             file_progress = 20 + int((i / total_files) * 40)
@@ -108,9 +115,25 @@ def analyze_project(self, job_id: str) -> dict:
                     min(file_progress, 60),
                 )
 
+            # Check if this file was already processed previously
+            if file_info['path'] in existing_file_summaries:
+                fs = existing_file_summaries[file_info['path']]
+                file_summaries_data.append({
+                    'file_path': fs.file_path,
+                    'summary': fs.summary,
+                    'language': fs.language,
+                })
+                continue
+
             content = read_file_content(file_info['abs_path'])
             if not content or len(content.strip()) == 0:
                 continue
+
+            # Poll for cancellation
+            job.refresh_from_db(fields=['status'])
+            if job.status == 'cancelled':
+                logger.info(f"Analysis cancelled for project {project.name}")
+                return {'status': 'cancelled', 'message': 'Job was cancelled by the user'}
 
             try:
                 summary = ai.summarize_file(
@@ -150,6 +173,10 @@ def analyze_project(self, job_id: str) -> dict:
         module_summaries_data = []
         total_modules = len(modules)
 
+        existing_module_summaries = {
+            ms.module_path: ms for ms in ModuleSummary.objects.filter(project=project)
+        }
+
         for i, (module_path, module_files) in enumerate(modules.items(), 1):
             module_progress = 65 + int((i / total_modules) * 10)
             _update_progress(
@@ -157,6 +184,22 @@ def analyze_project(self, job_id: str) -> dict:
                 f'Analyzing module {i}/{total_modules}: {module_path}',
                 min(module_progress, 75),
             )
+
+            # Check if already processed
+            if module_path in existing_module_summaries:
+                ms = existing_module_summaries[module_path]
+                module_summaries_data.append({
+                    'module_path': ms.module_path,
+                    'summary': ms.summary,
+                    'file_count': ms.file_count,
+                })
+                continue
+
+            # Poll for cancellation
+            job.refresh_from_db(fields=['status'])
+            if job.status == 'cancelled':
+                logger.info(f"Analysis cancelled for project {project.name}")
+                return {'status': 'cancelled', 'message': 'Job was cancelled by the user'}
 
             try:
                 mod_summary = ai.summarize_module(module_path, module_files)
@@ -184,43 +227,57 @@ def analyze_project(self, job_id: str) -> dict:
         )
 
         # ── Step 5: Project-level outputs ────────────────────
+        existing_outputs = {
+            po.output_type: po.content for po in ProjectOutput.objects.filter(project=project)
+        }
 
         # 5a. Project Overview
-        _update_progress(job, 'Generating project overview...', 78)
-        overview = ai.generate_project_overview(project.name, combined_module_summaries)
-        ProjectOutput.objects.create(
-            project=project, output_type='overview', content=overview
-        )
+        if 'overview' in existing_outputs:
+            overview = existing_outputs['overview']
+        else:
+            _update_progress(job, 'Generating project overview...', 78)
+            overview = ai.generate_project_overview(project.name, combined_module_summaries)
+            ProjectOutput.objects.create(
+                project=project, output_type='overview', content=overview
+            )
 
         # 5b. Architecture
-        _update_progress(job, 'Generating architecture explanation...', 83)
-        architecture = ai.generate_architecture(project.name, combined_module_summaries)
-        ProjectOutput.objects.create(
-            project=project, output_type='architecture', content=architecture
-        )
+        if 'architecture' not in existing_outputs:
+            _update_progress(job, 'Generating architecture explanation...', 83)
+            architecture = ai.generate_architecture(project.name, combined_module_summaries)
+            ProjectOutput.objects.create(
+                project=project, output_type='architecture', content=architecture
+            )
+        else:
+            architecture = existing_outputs['architecture']
 
         # 5c. Workflow
-        _update_progress(job, 'Generating workflow explanation...', 88)
-        workflow = ai.generate_workflow(project.name, combined_module_summaries)
-        ProjectOutput.objects.create(
-            project=project, output_type='workflow', content=workflow
-        )
+        if 'workflow' not in existing_outputs:
+            _update_progress(job, 'Generating workflow explanation...', 88)
+            workflow = ai.generate_workflow(project.name, combined_module_summaries)
+            ProjectOutput.objects.create(
+                project=project, output_type='workflow', content=workflow
+            )
+        else:
+            workflow = existing_outputs['workflow']
 
         # 5d. Use Case Diagram (Mermaid)
-        _update_progress(job, 'Generating use case diagram...', 92)
-        usecase_diagram = ai.generate_usecase_diagram(project.name, overview)
-        ProjectOutput.objects.create(
-            project=project, output_type='usecase_diagram', content=usecase_diagram
-        )
+        if 'usecase_diagram' not in existing_outputs:
+            _update_progress(job, 'Generating use case diagram...', 92)
+            usecase_diagram = ai.generate_usecase_diagram(project.name, overview)
+            ProjectOutput.objects.create(
+                project=project, output_type='usecase_diagram', content=usecase_diagram
+            )
 
         # 5e. User Manual
-        _update_progress(job, 'Generating user manual...', 95)
-        user_manual = ai.generate_user_manual(
-            project.name, overview, architecture, workflow
-        )
-        ProjectOutput.objects.create(
-            project=project, output_type='user_manual', content=user_manual
-        )
+        if 'user_manual' not in existing_outputs:
+            _update_progress(job, 'Generating user manual...', 95)
+            user_manual = ai.generate_user_manual(
+                project.name, overview, architecture, workflow
+            )
+            ProjectOutput.objects.create(
+                project=project, output_type='user_manual', content=user_manual
+            )
 
         # ── Complete ─────────────────────────────────────────
         job.status = 'completed'

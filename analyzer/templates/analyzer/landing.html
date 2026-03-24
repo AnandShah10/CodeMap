@@ -1,0 +1,181 @@
+{% extends 'analyzer/base.html' %}
+{% load static %}
+
+{% block title %}CodeMap - AI-Powered Codebase Analysis & Documentation{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Full-width landing layout overrides */
+    body {
+        background-color: #0f172a; /* Deep space blue */
+    }
+    .container {
+        max-width: 1200px;
+    }
+    .landing-hero {
+        padding: 100px 0 120px;
+        text-align: center;
+        background: radial-gradient(circle at top center, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+    }
+    .hero-tagline {
+        display: inline-block;
+        padding: 6px 16px;
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 100px;
+        color: #818cf8;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 24px;
+        animation: fadeInDown 0.8s ease-out;
+    }
+    .hero-title {
+        font-size: 4.5rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 24px;
+        background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.02em;
+        animation: fadeInUp 0.8s ease-out;
+    }
+    .hero-subtitle {
+        font-size: 1.25rem;
+        color: #94a3b8;
+        max-width: 650px;
+        margin: 0 auto 48px;
+        line-height: 1.6;
+        animation: fadeInUp 0.8s ease-out 0.2s backwards;
+    }
+    .hero-cta {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        animation: fadeInUp 0.8s ease-out 0.4s backwards;
+    }
+    
+    .btn-hero-primary {
+        padding: 16px 32px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-hero-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px -5px rgba(79, 70, 229, 0.5);
+        color: white;
+    }
+    .btn-hero-secondary {
+        padding: 16px 32px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.05);
+        color: #f8fafc;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        transition: background 0.2s;
+    }
+    .btn-hero-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #f8fafc;
+    }
+
+    /* Grid Section */
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-top: 80px;
+    }
+    .feature-card {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 32px;
+        border-radius: 24px;
+        transition: border-color 0.3s;
+    }
+    .feature-card:hover {
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+    .feature-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        color: #818cf8;
+    }
+    .feature-card h3 {
+        color: #f8fafc;
+        margin-bottom: 12px;
+        font-size: 1.25rem;
+    }
+    .feature-card p {
+        color: #94a3b8;
+        line-height: 1.5;
+        font-size: 0.95rem;
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 992px) {
+        .feature-grid { grid-template-columns: repeat(2, 1fr); }
+        .hero-title { font-size: 3.5rem; }
+    }
+    @media (max-width: 768px) {
+        .feature-grid { grid-template-columns: 1fr; }
+        .hero-title { font-size: 2.75rem; }
+        .hero-cta { flex-direction: column; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="landing-hero">
+    <div class="hero-tagline">✨ Now with AI-Powered Use Case Diagrams</div>
+    <h1 class="hero-title">Visualize Your Codebase <br>In Seconds</h1>
+    <p class="hero-subtitle">
+        CodeMap uses advanced AI to analyze your source code and generate beautiful diagrams, 
+        documentation, and architectural insights automatically.
+    </p>
+    <div class="hero-cta">
+        <a href="{% url 'analyzer:register' %}" class="btn-hero-primary">Get Started for Free</a>
+        <a href="{% url 'analyzer:login' %}" class="btn-hero-secondary">Sign In</a>
+    </div>
+
+    <div class="feature-grid">
+        <div class="feature-card">
+            <div class="feature-icon">🔍</div>
+            <h3>Deep Logic Analysis</h3>
+            <p>Our AI scans every file to understand the intent and logic, not just the syntax.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>Automatic Diagrams</h3>
+            <p>Generate Mermaid-powered use case and workflow diagrams from any project structure.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📖</div>
+            <h3>Instant Documentation</h3>
+            <p>Get professional user manuals and architectural overviews without writing a single line.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

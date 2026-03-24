@@ -41,14 +41,15 @@
         <h2 style="margin-bottom: 1rem; color: var(--accent-secondary);">Use Case Diagram</h2>
         <div class="diagram-container">
             <div class="mermaid" id="usecase-diagram">
-                {{ outputs.usecase_diagram|default:"graph LR\n    A[No diagram available]" }}
+                {{ outputs.usecase_diagram|default:"graph LR\n    A[No diagram available]"|safe }}
             </div>
         </div>
         <details style="margin-top: 1.5rem;">
-            <summary style="cursor: pointer; color: var(--text-secondary); font-weight: 600;">
+            <summary style="cursor: pointer; color: var(--text-secondary); font-weight: 600; display: inline-block;">
                 📝 View Mermaid Source
             </summary>
-            <pre style="margin-top: 0.75rem; background: var(--bg-input); padding: 1rem; border-radius: var(--radius-sm); overflow-x: auto;"><code id="mermaid-source">{{ outputs.usecase_diagram|default:"" }}</code></pre>
+            <button id="copy-mermaid-btn" onclick="copyMermaidCode()" class="btn btn-secondary" style="margin-left: 1rem; padding: 0.2rem 0.6rem; font-size: 0.8rem;">📋 Copy Code</button>
+            <pre style="margin-top: 0.75rem; background: var(--bg-input); padding: 1rem; border-radius: var(--radius-sm); overflow-x: auto;"><code id="mermaid-source">{{ outputs.usecase_diagram|default:""|safe }}</code></pre>
         </details>
     </div>
 
@@ -119,6 +120,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // ── Tab switching ─────────────────────────────────────
+    let mermaidRendered = false;
+
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             // Deactivate all
@@ -126,7 +129,18 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             // Activate clicked
             this.classList.add('active');
-            document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            const targetContent = document.getElementById('tab-' + this.dataset.tab);
+            targetContent.classList.add('active');
+
+            // Render mermaid if we just opened the usecase tab
+            if (this.dataset.tab === 'usecase' && !mermaidRendered) {
+                try {
+                    mermaid.run({ querySelector: '.mermaid' });
+                    mermaidRendered = true;
+                } catch (e) {
+                    console.warn('Mermaid rendering error:', e);
+                }
+            }
         });
     });
 
@@ -152,14 +166,19 @@ document.addEventListener('DOMContentLoaded', function() {
             el.innerHTML = marked.parse(content);
         }
     });
-
-    // ── Re-render Mermaid diagrams ────────────────────────
-    try {
-        mermaid.run({ querySelector: '.mermaid' });
-    } catch (e) {
-        console.warn('Mermaid rendering error:', e);
-    }
 });
+
+// ── Copy Function ─────────────────────────────────────
+function copyMermaidCode() {
+    const code = document.getElementById('mermaid-source').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('copy-mermaid-btn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+    });
+}
+
 
 // ── Accordion toggle ──────────────────────────────────
 function toggleAccordion(header) {

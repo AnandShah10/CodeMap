@@ -54,10 +54,22 @@
                 <a href="{% url 'analyzer:project_results' project.id %}" class="btn btn-primary btn-lg">
                     📄 View Results
                 </a>
-            {% elif job.status == 'failed' %}
-                <a href="{% url 'analyzer:upload' %}" class="btn btn-secondary">
-                    🔄 Try Again
-                </a>
+            {% elif job.status == 'failed' or job.status == 'cancelled' %}
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <form method="POST" action="{% url 'analyzer:resume_project' project.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">⏯️ Resume Analysis</button>
+                    </form>
+                    <form method="POST" action="{% url 'analyzer:restart_project' project.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary">🔄 Restart (Wipe)</button>
+                    </form>
+                </div>
+            {% else %}
+                <form method="POST" action="{% url 'analyzer:cancel_project' project.id %}" style="display: inline;" id="cancel-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" style="background-color: var(--error); color: white; border: none;">⏹️ Stop Analysis</button>
+                </form>
             {% endif %}
         </div>
 
@@ -106,13 +118,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     'pending': 'Pending',
                     'processing': 'Processing',
                     'completed': 'Completed',
-                    'failed': 'Failed'
+                    'failed': 'Failed',
+                    'cancelled': 'Cancelled'
                 };
                 const statusIcons = {
                     'pending': '⏳',
                     'processing': '⚙️',
                     'completed': '✅',
-                    'failed': '❌'
+                    'failed': '❌',
+                    'cancelled': '⛔'
                 };
 
                 statusText.textContent = statusLabels[data.status] || data.status;
@@ -127,21 +141,38 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Show results button
                     document.getElementById('action-buttons').innerHTML =
                         '<a href="' + resultsPageUrl + '" class="btn btn-primary btn-lg">📄 View Results</a>';
-                } else if (data.status === 'failed') {
+                } else if (data.status === 'failed' || data.status === 'cancelled') {
                     clearInterval(polling);
                     const spinner = document.getElementById('spinner-container');
                     if (spinner) spinner.style.display = 'none';
-                    document.getElementById('action-buttons').innerHTML =
-                        '<a href="/" class="btn btn-secondary">🔄 Try Again</a>';
+                    
+                    const cancelForm = document.getElementById('cancel-form');
+                    if (cancelForm) cancelForm.style.display = 'none';
+
+                    document.getElementById('action-buttons').innerHTML = `
+                        <div style="display: flex; gap: 1rem; justify-content: center;">
+                            <form method="POST" action="/projects/${projectId}/resume/" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary">⏯️ Resume Analysis</button>
+                            </form>
+                            <form method="POST" action="/projects/${projectId}/restart/" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-secondary">🔄 Restart (Wipe)</button>
+                            </form>
+                        </div>
+                    `;
                     // Show error
                     if (data.error_message) {
                         const card = document.getElementById('status-card');
-                        const alert = document.createElement('div');
-                        alert.className = 'alert alert-error';
-                        alert.style.marginTop = '1.5rem';
-                        alert.style.textAlign = 'left';
-                        alert.innerHTML = '<strong>Error:</strong> ' + data.error_message;
-                        card.querySelector('.progress-info').after(alert);
+                        const existingError = card.querySelector('.alert-error');
+                        if (!existingError) {
+                            const alert = document.createElement('div');
+                            alert.className = 'alert alert-error';
+                            alert.style.marginTop = '1.5rem';
+                            alert.style.textAlign = 'left';
+                            alert.innerHTML = '<strong>Error:</strong> ' + data.error_message;
+                            card.querySelector('.progress-info').after(alert);
+                        }
                     }
                 }
             })

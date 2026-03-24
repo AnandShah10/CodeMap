@@ -9,6 +9,10 @@ import uuid
 from django.db import models
 
 
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+
 class Project(models.Model):
     """
     Represents an uploaded project (ZIP file or Git repository).
@@ -23,6 +27,7 @@ class Project(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='projects')
     name = models.CharField(max_length=255, help_text="Project name (derived from filename or repo)")
     upload_type = models.CharField(max_length=10, choices=UPLOAD_TYPE_CHOICES)
     source_file = models.FileField(upload_to='projects/uploads/', blank=True, null=True)
@@ -57,6 +62,7 @@ class AnalysisJob(models.Model):
         ('processing', 'Processing'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -168,3 +174,19 @@ class ProjectOutput(models.Model):
 
     def __str__(self):
         return f"{self.get_output_type_display()} — {self.project.name}"
+
+
+# ── Add Email OTP Model ──────────────────────────────
+class EmailOTP(models.Model):
+    email = models.EmailField()
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    failed_attempts = models.IntegerField(default=0)
+
+    def is_valid(self):
+        # OTP is valid for 5 minutes
+        expiration_time = self.created_at + timezone.timedelta(minutes=5)
+        return timezone.now() <= expiration_time
+
+    def __str__(self):
+        return f"{self.email} - {self.otp}"

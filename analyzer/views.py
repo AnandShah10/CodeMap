@@ -10,7 +10,10 @@ import logging
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login
+from django.contrib.auth.forms import UserCreationForm
 
 from .forms import ProjectUploadForm
 from .models import AnalysisJob, FileSummary, ModuleSummary, Project, ProjectOutput
@@ -25,7 +28,14 @@ logger = logging.getLogger('analyzer')
 # ──────────────────────────────────────────────
 # Template-Based Views
 # ──────────────────────────────────────────────
+def landing(request):
+    """Render the landing page."""
+    if request.user.is_authenticated:
+        return redirect('analyzer:project_list')
+    return render(request, 'analyzer/landing.html')
 
+
+@login_required
 def upload_project(request):
     """
     Handle project upload via web form.
@@ -43,6 +53,7 @@ def upload_project(request):
             project = Project.objects.create(
                 name=project_name,
                 upload_type=upload_type,
+                user=request.user
             )
 
             if upload_type == 'zip':
@@ -123,15 +134,92 @@ def project_results(request, project_id):
     })
 
 
+@require_POST
+def cancel_project(request, project_id):
+    """Cancel a pending or processing analysis job."""
+    project = get_object_or_404(Project, id=project_id)
+    job = get_object_or_404(AnalysisJob, project=project)
+
+    if job.status not in ['completed', 'failed']:
+        job.status = 'cancelled'
+        job.progress_message = 'Analysis cancelled by user.'
+        job.save(update_fields=['status', 'progress_message'])
+    
+    return redirect('analyzer:project_status', project_id=project.id)
+
+
+@require_POST
+def restart_project(request, project_id):
+    """Restart a cancelled or failed analysis job, wiping previous results."""
+    project = get_object_or_404(Project, id=project_id)
+    job = get_object_or_404(AnalysisJob, project=project)
+
+    # Clear previous output
+    FileSummary.objects.filter(project=project).delete()
+    ModuleSummary.objects.filter(project=project).delete()
+    ProjectOutput.objects.filter(project=project).delete()
+
+    job.status = 'pending'
+    job.progress_percent = 0
+    job.progress_message = 'Job restarted, waiting to start...'
+    job.error_message = ''
+    job.completed_at = None
+    job.save()
+
+    # Dispatch the task
+    if settings.USE_CELERY:
+        task = analyze_project.delay(str(job.id))
+        job.celery_task_id = task.id
+    else:
+        background_queue.enqueue(analyze_project, str(job.id))
+        job.celery_task_id = "local-queue"
+        
+    job.save(update_fields=['celery_task_id'])
+
+    return redirect('analyzer:project_status', project_id=project.id)
+
+
+@login_required
+@require_POST
+def resume_project(request, project_id):
+    """Resume a cancelled or failed analysis job, keeping previous progress."""
+    project = get_object_or_404(Project, id=project_id, user=request.user)
+    job = get_object_or_404(AnalysisJob, project=project)
+
+    job.status = 'pending'
+    job.progress_message = 'Job resuming, checking existing progress...'
+    job.error_message = ''
+    job.completed_at = None
+    job.save()
+
+    # Dispatch the task
+    if settings.USE_CELERY:
+        task = analyze_project.delay(str(job.id))
+        job.celery_task_id = task.id
+    else:
+        background_queue.enqueue(analyze_project, str(job.id))
+        job.celery_task_id = "local-queue"
+        
+    job.save(update_fields=['celery_task_id'])
+
+    return redirect('analyzer:project_status', project_id=project.id)
+
+
+@login_required
 @require_GET
 def project_list(request):
-    """
-    Display a list of all analyzed projects.
-    """
-    projects = Project.objects.prefetch_related('analysis_job').all()
-    return render(request, 'analyzer/project_list.html', {
-        'projects': projects,
-    })
+    """List all projects for the current user."""
+    projects = Project.objects.filter(user=request.user).select_related('analysis_job')
+    return render(request, 'analyzer/project_list.html', {'projects': projects})
+
+
+def login_view_ui(request):
+    """Render the Custom Login Template (JS driven for OTP)"""
+    return render(request, 'analyzer/login.html')
+
+def register_view_ui(request):
+    """Render the Custom Register Template (JS driven for OTP)"""
+    return render(request, 'analyzer/register.html')
 
 
 # ──────────────────────────────────────────────
@@ -139,7 +227,8 @@ def project_list(request):
 # ──────────────────────────────────────────────
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@login_required
+@require_http_methods(["GET", "POST"])
 def api_upload(request):
     """
     API endpoint for uploading a project.

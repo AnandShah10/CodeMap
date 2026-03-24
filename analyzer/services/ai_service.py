@@ -295,9 +295,11 @@ class AIService:
         )
         result = self._call_api(prompt)
 
-        # Clean up: remove markdown code fences if the AI added them
+        # Clean up: remove markdown code fences, and any %%{init ...}%% blocks
         result = re.sub(r'^```(?:mermaid)?\s*\n?', '', result)
         result = re.sub(r'\n?```\s*$', '', result)
+        result = re.sub(r'%%\{init[^\}]*\}%%\n?', '', result)
+        
         return result.strip()
 
     def generate_user_manual(

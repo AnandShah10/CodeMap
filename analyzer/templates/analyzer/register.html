@@ -1,0 +1,253 @@
+{% extends "analyzer/base.html" %}
+
+{% block title %}Sign Up — CodeMap{% endblock %}
+
+{% block content %}
+<style>
+    .auth-page-wrapper {
+        display: flex;
+        min-height: calc(100vh - 80px);
+        margin: -2rem; 
+        background: var(--bg-body, #f4f7fe);
+    }
+    
+    .auth-visual {
+        flex: 1;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 4rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .auth-visual::before {
+        content: '';
+        position: absolute;
+        top: -10%; left: -10%; width: 120%; height: 120%;
+        background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 60%);
+        pointer-events: none;
+    }
+
+    .node-circle {
+        position: absolute; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px);
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+        100% { transform: translateY(0px); }
+    }
+
+    .auth-visual h1 { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.2; z-index: 1; }
+    .auth-visual p { font-size: 1.25rem; opacity: 0.9; max-width: 80%; z-index: 1; }
+
+    .auth-form-section { flex: 1; display: flex; justify-content: center; align-items: center; padding: 2rem; background: var(--bg-card, #ffffff); }
+    .auth-card { width: 100%; max-width: 440px; }
+    .auth-header { margin-bottom: 2.5rem; }
+    .auth-header h2 { font-size: 2rem; font-weight: 700; color: var(--text-primary, #0f172a); margin-bottom: 0.5rem; }
+    .auth-header p { color: var(--text-secondary, #64748b); font-size: 1rem; }
+
+    .auth-form-group { margin-bottom: 1.5rem; }
+    .auth-label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary, #334155); font-size: 0.9rem; }
+    
+    .auth-input {
+        width: 100%; padding: 0.85rem 1.2rem;
+        border: 1px solid var(--border-color, #cbd5e1); border-radius: 10px;
+        font-size: 1rem; background: var(--bg-body, #f8fafc); color: var(--text-primary, #0f172a);
+        transition: all 0.3s ease; box-sizing: border-box;
+    }
+    
+    .auth-input:focus { outline: none; border-color: #2563eb; background: #ffffff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
+    
+    .auth-btn {
+        width: 100%; padding: 1rem;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white;
+        border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600;
+        cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; margin-top: 1rem;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    }
+    .auth-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
+    .auth-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
+    
+    .auth-footer { margin-top: 2rem; text-align: center; color: var(--text-secondary, #64748b); }
+    .auth-link { color: #2563eb; text-decoration: none; font-weight: 600; cursor: pointer; }
+    .auth-link:hover { text-decoration: underline; }
+
+    .alert-error { padding: 1rem; background: #fee2e2; border-left: 4px solid #ef4444; color: #b91c1c; border-radius: 6px; margin-bottom: 1.5rem; display: none; }
+    .alert-success { padding: 1rem; background: #dcfce7; border-left: 4px solid #22c55e; color: #15803d; border-radius: 6px; margin-bottom: 1.5rem; display: none; }
+
+    @media (max-width: 900px) { .auth-visual { display: none; } }
+    @media (max-width: 480px) { .auth-form-section { padding: 1rem; } .auth-card { padding: 1.5rem; box-shadow: none; border: none; } }
+    @media (prefers-color-scheme: dark) {
+        .auth-form-section { background: var(--bg-card, #0f172a); }
+        .auth-header h2 { color: #f8fafc; } .auth-label { color: #e2e8f0; }
+        .auth-input { background: #1e293b; border-color: #334155; color: #f8fafc; }
+        .auth-input:focus { background: #0f172a; }
+    }
+</style>
+
+<div class="auth-page-wrapper">
+    <div class="auth-visual">
+        <div class="node-circle" style="width: 150px; height: 150px; top: 10%; right: 10%; animation-delay: 0s;"></div>
+        <div class="node-circle" style="width: 80px; height: 80px; bottom: 20%; left: 15%; animation-delay: 1.5s;"></div>
+        <div class="node-circle" style="width: 250px; height: 250px; bottom: -5%; right: -5%; background: rgba(255,255,255,0.05); animation-delay: 3s;"></div>
+        <h1>Decode Your Codebase.</h1>
+        <p>Join CodeMap to transform complex repositories into beautiful, intelligible diagrams and documentation instantly.</p>
+    </div>
+
+    <div class="auth-form-section">
+        <div class="auth-card">
+            <div class="auth-header" id="step1-header">
+                <h2>Create an Account</h2>
+                <p>Start mapping your architecture today.</p>
+            </div>
+            
+            <div class="auth-header" id="step2-header" style="display: none;">
+                <h2>Verify Email</h2>
+                <p>We've sent a 6-digit code to your email.</p>
+            </div>
+            
+            <div id="alert-error" class="alert-error"></div>
+            <div id="alert-success" class="alert-success"></div>
+
+            <!-- Step 1: Email -->
+            <form id="email-form" onsubmit="handleSendOTP(event)">
+                <div class="auth-form-group">
+                    <label class="auth-label">Email Address</label>
+                    <input type="email" id="email-input" class="auth-input" placeholder="you@example.com" required>
+                </div>
+                <button type="submit" id="btn-send-otp" class="auth-btn">Send OTP</button>
+            </form>
+            
+            <!-- Step 2: OTP -->
+            <form id="otp-form" onsubmit="handleVerifyOTP(event)" style="display: none;">
+                <div class="auth-form-group">
+                    <label class="auth-label">One-Time Password</label>
+                    <input type="text" id="otp-input" class="auth-input" placeholder="123456" maxlength="6" pattern="\d{6}" required>
+                </div>
+                <button type="submit" id="btn-verify-otp" class="auth-btn">Verify & Create Account</button>
+                <div style="text-align: center; margin-top: 1rem; font-size: 0.9rem;">
+                    Didn't receive the code? <a onclick="resendOTP()" class="auth-link">Resend OTP</a>
+                </div>
+            </form>
+            
+            <div class="auth-footer" id="auth-footer">
+                Already have an account? <a href="{% url 'analyzer:login' %}" class="auth-link">Log in here</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentEmail = '';
+
+    function showError(msg) {
+        document.getElementById('alert-success').style.display = 'none';
+        const el = document.getElementById('alert-error');
+        el.innerText = msg;
+        el.style.display = 'block';
+    }
+
+    function showSuccess(msg) {
+        document.getElementById('alert-error').style.display = 'none';
+        const el = document.getElementById('alert-success');
+        el.innerText = msg;
+        el.style.display = 'block';
+    }
+
+    async function handleSendOTP(e) {
+        e.preventDefault();
+        const email = document.getElementById('email-input').value;
+        const btn = document.getElementById('btn-send-otp');
+        btn.disabled = true;
+        btn.innerText = "Sending...";
+
+        try {
+            const res = await fetch('/api/auth/signup/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            });
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                currentEmail = email;
+                document.getElementById('email-form').style.display = 'none';
+                document.getElementById('step1-header').style.display = 'none';
+                document.getElementById('auth-footer').style.display = 'none';
+                
+                document.getElementById('otp-form').style.display = 'block';
+                document.getElementById('step2-header').style.display = 'block';
+                showSuccess(data.message);
+                document.getElementById('otp-input').focus();
+            } else {
+                showError(data.error || "An error occurred");
+                btn.disabled = false;
+                btn.innerText = "Send OTP";
+            }
+        } catch (err) {
+            showError("Network error. Please try again.");
+            btn.disabled = false;
+            btn.innerText = "Send OTP";
+        }
+    }
+
+    async function handleVerifyOTP(e) {
+        e.preventDefault();
+        const otp = document.getElementById('otp-input').value;
+        const btn = document.getElementById('btn-verify-otp');
+        btn.disabled = true;
+        btn.innerText = "Verifying...";
+
+        try {
+            const res = await fetch('/api/auth/verify/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentEmail, otp: otp, type: 'signup' })
+            });
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                // Store JWT in localStorage
+                localStorage.setItem('jwtToken', data.token);
+                // Standard session is also set by API via login(). Redirect.
+                window.location.href = "{% url 'analyzer:project_list' %}";
+            } else {
+                showError(data.error || "Invalid OTP");
+                btn.disabled = false;
+                btn.innerText = "Verify & Create Account";
+            }
+        } catch (err) {
+            showError("Network error. Please try again.");
+            btn.disabled = false;
+            btn.innerText = "Verify & Create Account";
+        }
+    }
+    
+    async function resendOTP() {
+        showSuccess("Resending...");
+        document.getElementById('alert-error').style.display = 'none';
+        
+        try {
+            const res = await fetch('/api/auth/resend/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentEmail })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showSuccess("OTP Resent successfully!");
+            } else {
+                showError(data.error || "Failed to resend");
+            }
+        } catch (err) {
+            showError("Network error.");
+        }
+    }
+</script>
+{% endblock %}
