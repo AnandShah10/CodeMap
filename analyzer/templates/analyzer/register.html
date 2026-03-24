@@ -8,7 +8,7 @@
         display: flex;
         min-height: calc(100vh - 80px);
         margin: -2rem; 
-        background: var(--bg-body, #f4f7fe);
+        background: var(--bg-primary);
     }
     
     .auth-visual {
@@ -46,19 +46,19 @@
     .auth-visual h1 { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.2; z-index: 1; }
     .auth-visual p { font-size: 1.25rem; opacity: 0.9; max-width: 80%; z-index: 1; }
 
-    .auth-form-section { flex: 1; display: flex; justify-content: center; align-items: center; padding: 2rem; background: var(--bg-card, #ffffff); }
+    .auth-form-section { flex: 1; display: flex; justify-content: center; align-items: center; padding: 2rem; background: var(--bg-card); }
     .auth-card { width: 100%; max-width: 440px; }
     .auth-header { margin-bottom: 2.5rem; }
-    .auth-header h2 { font-size: 2rem; font-weight: 700; color: var(--text-primary, #0f172a); margin-bottom: 0.5rem; }
-    .auth-header p { color: var(--text-secondary, #64748b); font-size: 1rem; }
+    .auth-header h2 { font-size: 2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; }
+    .auth-header p { color: var(--text-secondary); font-size: 1rem; }
 
     .auth-form-group { margin-bottom: 1.5rem; }
     .auth-label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary, #334155); font-size: 0.9rem; }
     
     .auth-input {
         width: 100%; padding: 0.85rem 1.2rem;
-        border: 1px solid var(--border-color, #cbd5e1); border-radius: 10px;
-        font-size: 1rem; background: var(--bg-body, #f8fafc); color: var(--text-primary, #0f172a);
+        border: 1px solid var(--border-color); border-radius: 10px;
+        font-size: 1rem; background: var(--bg-primary); color: var(--text-primary);
         transition: all 0.3s ease; box-sizing: border-box;
     }
     
@@ -83,12 +83,6 @@
 
     @media (max-width: 900px) { .auth-visual { display: none; } }
     @media (max-width: 480px) { .auth-form-section { padding: 1rem; } .auth-card { padding: 1.5rem; box-shadow: none; border: none; } }
-    @media (prefers-color-scheme: dark) {
-        .auth-form-section { background: var(--bg-card, #0f172a); }
-        .auth-header h2 { color: #f8fafc; } .auth-label { color: #e2e8f0; }
-        .auth-input { background: #1e293b; border-color: #334155; color: #f8fafc; }
-        .auth-input:focus { background: #0f172a; }
-    }
 </style>
 
 <div class="auth-page-wrapper">

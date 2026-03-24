@@ -7,7 +7,7 @@
 <style>
     /* Full-width landing layout overrides */
     body {
-        background-color: #0f172a; /* Deep space blue */
+        background-color: var(--bg-primary);
     }
     .container {
         max-width: 1200px;
@@ -15,15 +15,15 @@
     .landing-hero {
         padding: 100px 0 120px;
         text-align: center;
-        background: radial-gradient(circle at top center, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+        background: radial-gradient(circle at top center, rgba(79, 70, 229, 0.08) 0%, transparent 70%);
     }
     .hero-tagline {
         display: inline-block;
         padding: 6px 16px;
-        background: rgba(99, 102, 241, 0.1);
-        border: 1px solid rgba(99, 102, 241, 0.2);
+        background: rgba(79, 70, 229, 0.05);
+        border: 1px solid rgba(79, 70, 229, 0.2);
         border-radius: 100px;
-        color: #818cf8;
+        color: var(--accent-primary);
         font-size: 0.9rem;
         font-weight: 600;
         margin-bottom: 24px;
@@ -34,7 +34,7 @@
         font-weight: 800;
         line-height: 1.1;
         margin-bottom: 24px;
-        background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+        background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         letter-spacing: -0.02em;
@@ -42,7 +42,7 @@
     }
     .hero-subtitle {
         font-size: 1.25rem;
-        color: #94a3b8;
+        color: var(--text-secondary);
         max-width: 650px;
         margin: 0 auto 48px;
         line-height: 1.6;
@@ -74,16 +74,16 @@
         padding: 16px 32px;
         font-size: 1.1rem;
         font-weight: 600;
-        background: rgba(255, 255, 255, 0.05);
-        color: #f8fafc;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
         border-radius: 12px;
-        backdrop-filter: blur(10px);
+        box-shadow: var(--shadow-sm);
         transition: background 0.2s;
     }
     .btn-hero-secondary:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: #f8fafc;
+        background: var(--bg-card-hover);
+        color: var(--text-primary);
     }
 
     /* Grid Section */
@@ -94,34 +94,36 @@
         margin-top: 80px;
     }
     .feature-card {
-        background: rgba(30, 41, 59, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
         padding: 32px;
         border-radius: 24px;
-        transition: border-color 0.3s;
+        transition: border-color 0.3s, box-shadow 0.3s;
+        box-shadow: var(--shadow-sm);
     }
     .feature-card:hover {
         border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: var(--shadow-md);
     }
     .feature-icon {
         width: 48px;
         height: 48px;
-        background: rgba(99, 102, 241, 0.1);
+        background: rgba(79, 70, 229, 0.05);
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 1.5rem;
         margin-bottom: 20px;
-        color: #818cf8;
+        color: var(--accent-primary);
     }
     .feature-card h3 {
-        color: #f8fafc;
+        color: var(--text-primary);
         margin-bottom: 12px;
         font-size: 1.25rem;
     }
     .feature-card p {
-        color: #94a3b8;
+        color: var(--text-secondary);
         line-height: 1.5;
         font-size: 0.95rem;
     }
