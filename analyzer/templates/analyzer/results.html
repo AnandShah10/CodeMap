@@ -20,11 +20,11 @@
 
 <!-- Tabs Navigation -->
 <div class="tabs" id="result-tabs">
-    <button class="tab-btn active" data-tab="overview">📋 Overview</button>
-    <button class="tab-btn" data-tab="architecture">🏗️ Architecture</button>
-    <button class="tab-btn" data-tab="workflow">🔄 Workflow</button>
+    {% if outputs.overview %}<button class="tab-btn active" data-tab="overview">📋 Overview</button>{% endif %}
+    {% if outputs.architecture %}<button class="tab-btn {% if not outputs.overview %}active{% endif %}" data-tab="architecture">🏗️ Architecture</button>{% endif %}
+    {% if outputs.workflow %}<button class="tab-btn" data-tab="workflow">🔄 Workflow</button>{% endif %}
     <button class="tab-btn" data-tab="usecase">📊 Use Cases</button>
-    <button class="tab-btn" data-tab="manual">📖 User Manual</button>
+    {% if outputs.user_manual %}<button class="tab-btn" data-tab="manual">📖 User Manual</button>{% endif %}
     <button class="tab-btn" data-tab="modules">📦 Modules</button>
     <button class="tab-btn" data-tab="files">📄 Files</button>
 </div>
@@ -32,28 +32,37 @@
 <!-- Tab Contents -->
 <div class="card">
     <!-- Overview -->
+    {% if outputs.overview %}
     <div class="tab-content active" id="tab-overview">
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-            <a href="{% url 'analyzer:download_output' project.id 'overview' %}" class="btn btn-secondary btn-sm">📥 Download Overview</a>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem; gap: 0.5rem;">
+            <a href="{% url 'analyzer:download_output' project.id 'overview' %}" class="btn btn-primary btn-sm">📄 Download PDF</a>
+            <a href="{% url 'analyzer:download_output' project.id 'overview' %}?format=md" class="btn btn-secondary btn-sm">📥 MD</a>
         </div>
         <div class="markdown-content" id="md-overview"></div>
     </div>
+    {% endif %}
 
     <!-- Architecture -->
+    {% if outputs.architecture %}
     <div class="tab-content" id="tab-architecture">
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-            <a href="{% url 'analyzer:download_output' project.id 'architecture' %}" class="btn btn-secondary btn-sm">📥 Download Architecture</a>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem; gap: 0.5rem;">
+            <a href="{% url 'analyzer:download_output' project.id 'architecture' %}" class="btn btn-primary btn-sm">📄 Download PDF</a>
+            <a href="{% url 'analyzer:download_output' project.id 'architecture' %}?format=md" class="btn btn-secondary btn-sm">📥 MD</a>
         </div>
         <div class="markdown-content" id="md-architecture"></div>
     </div>
+    {% endif %}
 
     <!-- Workflow -->
+    {% if outputs.workflow %}
     <div class="tab-content" id="tab-workflow">
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-            <a href="{% url 'analyzer:download_output' project.id 'workflow' %}" class="btn btn-secondary btn-sm">📥 Download Workflow</a>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem; gap: 0.5rem;">
+            <a href="{% url 'analyzer:download_output' project.id 'workflow' %}" class="btn btn-primary btn-sm">📄 Download PDF</a>
+            <a href="{% url 'analyzer:download_output' project.id 'workflow' %}?format=md" class="btn btn-secondary btn-sm">📥 MD</a>
         </div>
         <div class="markdown-content" id="md-workflow"></div>
     </div>
+    {% endif %}
 
     <!-- Diagram Explorer -->
     <div class="tab-content" id="tab-usecase">
@@ -63,7 +72,7 @@
                 <div class="diagram-nav" id="diagram-nav">
                     <!-- UML Structural -->
                     <div class="diag-group">UML Structural</div>
-                    <button class="diag-btn active" data-diag="class_diagram">Class Diagram</button>
+                    <button class="diag-btn" data-diag="class_diagram">Class Diagram</button>
                     <button class="diag-btn" data-diag="object_diagram">Object Diagram</button>
                     <button class="diag-btn" data-diag="component_diagram">Component Diagram</button>
                     <button class="diag-btn" data-diag="composite_structure_diagram">Composite Structure</button>
@@ -97,7 +106,8 @@
                     <div class="diagram-actions">
                         <button id="retry-diagram-btn" onclick="retryDiagram()" class="btn btn-secondary btn-sm">🔄 Retry</button>
                         <button onclick="openFullscreen()" class="btn btn-secondary btn-sm">🔍 Full Screen</button>
-                        <a id="download-diagram-link" href="{% url 'analyzer:download_output' project.id 'class_diagram' %}" class="btn btn-secondary btn-sm">📥 Download</a>
+                        <a id="download-diagram-link" href="{% url 'analyzer:download_output' project.id 'class_diagram' %}" class="btn btn-primary btn-sm">📄 PDF</a>
+                        <a id="download-diagram-md-link" href="{% url 'analyzer:download_output' project.id 'class_diagram' %}?format=md" class="btn btn-secondary btn-sm">📥 MD</a>
                         <button id="copy-mermaid-btn" onclick="copyMermaidCode()" class="btn btn-secondary btn-sm">📋 Copy Code</button>
                     </div>
                 </div>
@@ -119,12 +129,15 @@
     </div>
 
     <!-- User Manual -->
+    {% if outputs.user_manual %}
     <div class="tab-content" id="tab-manual">
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-            <a href="{% url 'analyzer:download_output' project.id 'user_manual' %}" class="btn btn-secondary btn-sm">📥 Download Manual</a>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem; gap: 0.5rem;">
+            <a href="{% url 'analyzer:download_output' project.id 'user_manual' %}" class="btn btn-primary btn-sm">📄 Download PDF</a>
+            <a href="{% url 'analyzer:download_output' project.id 'user_manual' %}?format=md" class="btn btn-secondary btn-sm">📥 MD</a>
         </div>
         <div class="markdown-content" id="md-manual"></div>
     </div>
+    {% endif %}
 
     <!-- Modules -->
     <div class="tab-content" id="tab-modules">
@@ -181,7 +194,6 @@
             <button class="close-btn" onclick="closeFullscreen()">×</button>
         </div>
         <div id="modal-body" class="modal-body">
-            <!-- Mermaid SVG will be injected here -->
         </div>
     </div>
 </div>
@@ -253,13 +265,14 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
     @media (max-width: 992px) {
         .diagram-explorer-layout { grid-template-columns: 1fr; }
         .diagram-sidebar { border-right: none; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; }
     }
 
-    /* Modal Styles */
     .modal-overlay {
         display: none;
         position: fixed;
@@ -313,7 +326,7 @@
     }
     .close-btn:hover { color: var(--accent-primary); }
     
-    .diagram-actions { display: flex; gap: 0.5rem; }
+    .diagram-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     
     .loading-spinner {
         display: inline-block;
@@ -329,14 +342,12 @@
 </style>
 
 <script>
-// Pass all diagram contents as a JS object
 const diagramData = {
     {% for key, val in outputs.items %}"{{ key }}": `{{ val|escapejs }}`,{% endfor %}
 };
 let currentDiagType = 'class_diagram';
 let lastMermaidError = null;
 
-// Moved to global scope to be accessible by retryDiagram
 function switchDiagram(diagType) {
     const titleMap = {
         'class_diagram': 'Class Diagram',
@@ -360,25 +371,24 @@ function switchDiagram(diagType) {
         'project_structure': 'Project Structure'
     };
 
-    // Update state
     currentDiagType = diagType;
 
-    // Update nav buttons
     document.querySelectorAll('.diag-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.diag === diagType);
     });
 
-    // Update title
     const titleEl = document.getElementById('current-diagram-title');
     if (titleEl) titleEl.innerText = titleMap[diagType] || 'Diagram';
 
-    // Update download link
     const downloadLink = document.getElementById('download-diagram-link');
     if (downloadLink) {
         downloadLink.href = `/projects/{{ project.id }}/download/${diagType}/`;
     }
+    const downloadMdLink = document.getElementById('download-diagram-md-link');
+    if (downloadMdLink) {
+        downloadMdLink.href = `/projects/{{ project.id }}/download/${diagType}/?format=md`;
+    }
 
-    // Update content
     const canvas = document.getElementById('main-mermaid-canvas');
     const source = document.getElementById('mermaid-source');
     
@@ -386,12 +396,10 @@ function switchDiagram(diagType) {
 
     let content = diagramData[diagType] || 'graph LR\n    A[No diagram generated for this type yet]';
     
-    // Remove existing rendered SVG
     canvas.removeAttribute('data-processed');
     canvas.innerHTML = content;
     source.innerText = content;
 
-    // Trigger Mermaid
     lastMermaidError = null;
     try {
         mermaid.run({ 
@@ -408,7 +416,6 @@ function switchDiagram(diagType) {
     }
 }
 
-// Global Mermaid error hook
 mermaid.parseError = function(err, hash) {
     lastMermaidError = err;
     console.error('Mermaid Parse Error:', err);
@@ -430,7 +437,6 @@ function renderMarkdown(elementId, jsonScriptId) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // ── Tab switching ─────────────────────────────────────
     let mermaidInitialized = false;
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -439,21 +445,49 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             this.classList.add('active');
             const targetContent = document.getElementById('tab-' + this.dataset.tab);
-            targetContent.classList.add('active');
+            if (targetContent) targetContent.classList.add('active');
 
-            // Render mermaid if we opened the usecase (Diagram Explorer) tab
             if (this.dataset.tab === 'usecase') {
-                switchDiagram('class_diagram'); // Default
+                const firstVisible = Array.from(document.querySelectorAll('.diag-btn')).find(b => b.style.display !== 'none');
+                if (firstVisible) switchDiagram(firstVisible.dataset.diag);
             }
         });
     });
 
-    // Attach listeners to diagram nav buttons
+    // Hide any diagrams that the AI did not generate for this project
+    document.querySelectorAll('.diag-btn').forEach(btn => {
+        if (!diagramData.hasOwnProperty(btn.dataset.diag)) {
+            btn.style.display = 'none';
+        }
+    });
+
+    // Hide any group titles that are now entirely empty
+    document.querySelectorAll('.diag-group').forEach(group => {
+        let hasVisible = false;
+        let next = group.nextElementSibling;
+        while (next && next.classList.contains('diag-btn')) {
+            if (next.style.display !== 'none') {
+                hasVisible = true;
+                break;
+            }
+            next = next.nextElementSibling;
+        }
+        if (!hasVisible) {
+            group.style.display = 'none';
+        }
+    });
+
+    // Select the first valid diagram by default
+    const firstVisible = Array.from(document.querySelectorAll('.diag-btn')).find(b => b.style.display !== 'none');
+    if (firstVisible) {
+        currentDiagType = firstVisible.dataset.diag;
+        switchDiagram(currentDiagType);
+    }
+
     document.querySelectorAll('.diag-btn').forEach(btn => {
         btn.addEventListener('click', () => switchDiagram(btn.dataset.diag));
     });
 
-    // Render module and file summaries
     document.querySelectorAll('.module-md, .file-md').forEach(el => {
         const content = el.getAttribute('data-content');
         if (content) el.innerHTML = marked.parse(content);
@@ -465,7 +499,6 @@ document.addEventListener('DOMContentLoaded', function() {
     renderMarkdown('md-manual', 'raw-manual');
 });
 
-// ── Copy Function ─────────────────────────────────────
 function copyMermaidCode() {
     const code = document.getElementById('mermaid-source').innerText;
     navigator.clipboard.writeText(code).then(() => {
@@ -480,18 +513,16 @@ function toggleAccordion(header) {
     header.nextElementSibling.classList.toggle('open');
 }
 
-// ── Fullscreen Functions ───────────────────────────
 function openFullscreen() {
     const modal = document.getElementById('diagram-modal');
     const modalBody = document.getElementById('modal-body');
     const canvas = document.getElementById('main-mermaid-canvas');
     const title = document.getElementById('current-diagram-title').innerText;
     
-    // Copy the rendered SVG (not the raw text)
     modalBody.innerHTML = canvas.innerHTML;
     document.getElementById('modal-title').innerText = title;
     modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden'; // Prevent scroll
+    document.body.style.overflow = 'hidden';
 }
 
 function closeFullscreen() {
@@ -500,7 +531,6 @@ function closeFullscreen() {
     document.body.style.overflow = '';
 }
 
-// ── CSRF Helper ──────────────────────────────────────
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -516,7 +546,6 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// ── Retry Logic ──────────────────────────────────────
 async function retryDiagram() {
     const btn = document.getElementById('retry-diagram-btn');
     const originalContent = btn.innerHTML;
@@ -530,7 +559,6 @@ async function retryDiagram() {
             current_code: diagramData[currentDiagType],
             error_message: lastMermaidError
         };
-        console.log('Retrying diagram with payload:', payload);
 
         const response = await fetch(`/projects/${projectId}/diagram/${currentDiagType}/retry/`, {
             method: 'POST',
@@ -546,7 +574,6 @@ async function retryDiagram() {
         try {
             data = JSON.parse(responseText);
         } catch (pe) {
-            console.error('Failed to parse response as JSON:', responseText);
             throw new Error('Server returned invalid JSON response');
         }
 
@@ -558,17 +585,14 @@ async function retryDiagram() {
         }
         
         if (data.status === 'success') {
-            console.log('Retry successful, updating diagram UI');
             diagramData[currentDiagType] = data.content;
             switchDiagram(currentDiagType);
             btn.innerHTML = '✅ Done!';
         } else {
-            console.warn('Retry API returned status error:', data);
             alert('Error: ' + (data.message || 'Unknown error'));
             btn.innerHTML = '❌ Failed';
         }
     } catch (e) {
-        console.error('Retry execution failed:', e);
         alert(`An unexpected error occurred: ${e.message || e}`);
         btn.innerHTML = '❌ Error';
     } finally {

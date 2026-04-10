@@ -19,8 +19,8 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 
-from .forms import ProjectUploadForm
-from .models import AnalysisJob, FileSummary, ModuleSummary, Project, ProjectOutput
+from .forms import ProjectUploadForm, ALL_COMPONENT_VALUES, UserProfileForm
+from .models import AnalysisJob, FileSummary, ModuleSummary, Project, ProjectOutput, UserProfile
 from .tasks import analyze_project
 from .services.task_queue import background_queue
 
@@ -40,6 +40,24 @@ def landing(request):
 
 
 @login_required
+def profile_view(request):
+    """View and edit user profile (company name, logo)."""
+    # Using UserProfile.objects.get_or_create to ensure backward compatibility
+    # for users created before the signal was active.
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            return redirect('analyzer:profile')
+    else:
+        form = UserProfileForm(instance=profile)
+        
+    return render(request, 'analyzer/profile.html', {'form': form})
+
+
+@login_required
 def upload_project(request):
     """
     Handle project upload via web form.
@@ -52,12 +70,14 @@ def upload_project(request):
         if form.is_valid():
             upload_type = form.cleaned_data['upload_type']
             project_name = form.cleaned_data['project_name']
+            selected_components = form.cleaned_data.get('components', ALL_COMPONENT_VALUES)
 
             # Create the project
             project = Project.objects.create(
                 name=project_name,
                 upload_type=upload_type,
-                user=request.user
+                user=request.user,
+                selected_components=selected_components,
             )
 
             if upload_type == 'zip':
@@ -129,12 +149,16 @@ def project_results(request, project_id):
     file_summaries = FileSummary.objects.filter(project=project).order_by('file_path')
     module_summaries = ModuleSummary.objects.filter(project=project).order_by('module_path')
 
+    # Determine which components were selected
+    selected = project.selected_components or ALL_COMPONENT_VALUES
+
     return render(request, 'analyzer/results.html', {
         'project': project,
         'job': job,
         'outputs': outputs,
         'file_summaries': file_summaries,
         'module_summaries': module_summaries,
+        'selected_components': selected,
     })
 
 
@@ -158,11 +182,9 @@ def api_retry_diagram(request, project_id, output_type):
                 current_code = data.get('current_code')
                 
                 if error_message:
-                    # If it's a dict from Mermaid's parseError, extract the string representation
                     if isinstance(error_message, dict):
                         error_message = error_message.get('str') or error_message.get('message') or str(error_message)
                     
-                    # Safely log a preview of the error message for debugging
                     safe_msg = str(error_message)
                     logger.info(f"Received error message for fixing: {safe_msg[:100]}...")
             except (json.JSONDecodeError, TypeError):
@@ -173,7 +195,6 @@ def api_retry_diagram(request, project_id, output_type):
         
         ai = AIService()
         
-        # Get project context (overview and architecture)
         outputs = {
             po.output_type: po.content 
             for po in ProjectOutput.objects.filter(project=project, output_type__in=['overview', 'architecture'])
@@ -182,7 +203,6 @@ def api_retry_diagram(request, project_id, output_type):
         overview = outputs.get('overview', '')
         architecture = outputs.get('architecture', '')
         
-        # Include file list for better context (especially for project_structure)
         from analyzer.models import FileSummary
         file_list = "\n".join([fs.file_path for fs in FileSummary.objects.filter(project=project)])
         
@@ -202,7 +222,6 @@ def api_retry_diagram(request, project_id, output_type):
         )
         logger.debug(f"AI returned code ({len(diagram_code)} chars)")
 
-        # Update or create output
         obj, created = ProjectOutput.objects.update_or_create(
             project=project,
             output_type=output_type,
@@ -220,22 +239,88 @@ def api_retry_diagram(request, project_id, output_type):
 
 @login_required
 def download_output(request, project_id, output_type):
-    """Download a specific project output as a Markdown file."""
+    """
+    Download a specific project output as PDF (default) or Markdown (?format=md).
+    """
     project = get_object_or_404(Project, id=project_id, user=request.user)
     output = get_object_or_404(ProjectOutput, project=project, output_type=output_type)
     
-    filename = f"{project.name}_{output_type}.md"
-    content = output.content
+    fmt = request.GET.get('format', 'pdf')
     
-    # If it's a diagram, wrap it in a code block for better markdown viewing
-    if '_diagram' in output_type or output_type in ['workflow_flowchart', 'mindmap', 'project_structure']:
-        content = f"## {output.get_output_type_display()}\n\n```mermaid\n{content}\n```"
-    else:
-        content = f"# {output.get_output_type_display()}\n\n{content}"
+    if fmt == 'md':
+        # Legacy markdown download
+        filename = f"{project.name}_{output_type}.md"
+        content = output.content
+        
+        if '_diagram' in output_type or output_type in ['workflow_flowchart', 'mindmap', 'project_structure']:
+            content = f"## {output.get_output_type_display()}\n\n```mermaid\n{content}\n```"
+        else:
+            content = f"# {output.get_output_type_display()}\n\n{content}"
 
-    response = HttpResponse(content, content_type='text/markdown')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+        response = HttpResponse(content, content_type='text/markdown')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    
+    # Default: PDF download
+    try:
+        section_title = output.get_output_type_display()
+        
+        # For diagrams, wrap in code block for PDF
+        if '_diagram' in output_type or output_type in ['workflow_flowchart', 'mindmap', 'project_structure']:
+            html_content = (
+                f"<h2>{section_title}</h2>"
+                f"<p><em>Mermaid diagram source code:</em></p>"
+                f"<pre><code>{output.content}</code></pre>"
+            )
+        else:
+            html_content = markdown.markdown(
+                output.content, 
+                extensions=['fenced_code', 'tables', 'toc']
+            )
+
+        company_logo_b64 = None
+        user_profile = getattr(request.user, 'profile', None)
+        if user_profile and user_profile.company_logo:
+            try:
+                import base64
+                with open(user_profile.company_logo.path, 'rb') as img_f:
+                    if user_profile.company_logo.name.lower().endswith(('.png', '.svg')):
+                        mime = 'image/png' if user_profile.company_logo.name.lower().endswith('.png') else 'image/svg+xml'
+                    else:
+                        mime = 'image/jpeg'
+                    company_logo_b64 = f"data:{mime};base64,{base64.b64encode(img_f.read()).decode('utf-8')}"
+            except Exception as e:
+                logger.error(f"Could not read logo: {e}")
+        
+        template = get_template('analyzer/pdf_section_report.html')
+        html = template.render({
+            'project': project,
+            'section_title': section_title,
+            'html_content': html_content,
+            'generated_date': timezone.now().strftime('%B %d, %Y'),
+            'user_profile': user_profile,
+            'company_logo_b64': company_logo_b64,
+        })
+        
+        response = HttpResponse(content_type='application/pdf')
+        filename = f"{project.name.replace(' ', '_')}_{output_type}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        pisa_status = pisa.CreatePDF(
+            io.BytesIO(html.encode("UTF-8")),
+            dest=response,
+            encoding='UTF-8'
+        )
+        
+        if not pisa_status.err:
+            return response
+            
+        return HttpResponse(f"PDF Generation Error: {pisa_status.err}", status=500)
+        
+    except Exception as e:
+        logger.error(f"PDF generation failed for {output_type}: {e}")
+        import traceback
+        return HttpResponse(f"PDF Error: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status=500)
 
 
 @login_required
@@ -246,10 +331,8 @@ def download_full_report(request, project_id):
     
     report_lines = [f"# CodeMap Analysis Report: {project.name}", f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M')}", ""]
     
-    # Define preferred order
     order = ['overview', 'architecture', 'workflow', 'user_manual']
     
-    # Filter for text outputs first
     text_outputs = [o for o in outputs if o.output_type in order]
     text_outputs.sort(key=lambda x: order.index(x.output_type) if x.output_type in order else 99)
     
@@ -258,7 +341,6 @@ def download_full_report(request, project_id):
         report_lines.append(opt.content)
         report_lines.append("")
 
-    # Then append diagrams
     diagram_outputs = [o for o in outputs if o.output_type not in order]
     if diagram_outputs:
         report_lines.append("## Project Diagrams")
@@ -283,22 +365,33 @@ def download_pdf_report(request, project_id):
     try:
         project = get_object_or_404(Project, id=project_id, user=request.user)
         
-        # Try to find the latest successful job
         job = AnalysisJob.objects.filter(project=project, status='completed').latest('created_at')
         
         outputs_qs = ProjectOutput.objects.filter(project_id=project.id)
         
-        # Split into text documentation and diagrams
         doc_types = ['overview', 'architecture', 'workflow', 'user_manual']
         doc_outputs = {out.output_type: markdown.markdown(out.content, extensions=['fenced_code', 'tables']) 
                        for out in outputs_qs if out.output_type in doc_types}
         
         diagram_outputs = [out for out in outputs_qs if out.output_type not in doc_types]
         
-        # Fetch file and module summaries
         file_summaries = FileSummary.objects.filter(project=project).order_by('file_path')
         module_summaries = ModuleSummary.objects.filter(project=project).order_by('module_path')
         
+        company_logo_b64 = None
+        user_profile = getattr(request.user, 'profile', None)
+        if user_profile and user_profile.company_logo:
+            try:
+                import base64
+                with open(user_profile.company_logo.path, 'rb') as img_f:
+                    if user_profile.company_logo.name.lower().endswith(('.png', '.svg')):
+                        mime = 'image/png' if user_profile.company_logo.name.lower().endswith('.png') else 'image/svg+xml'
+                    else:
+                        mime = 'image/jpeg'
+                    company_logo_b64 = f"data:{mime};base64,{base64.b64encode(img_f.read()).decode('utf-8')}"
+            except Exception as e:
+                logger.error(f"Could not read logo: {e}")
+
         context = {
             'project': project,
             'job': job,
@@ -306,18 +399,18 @@ def download_pdf_report(request, project_id):
             'diagrams': diagram_outputs,
             'file_summaries': file_summaries,
             'module_summaries': module_summaries,
+            'user_profile': user_profile,
+            'company_logo_b64': company_logo_b64,
+            'generated_date': timezone.now().strftime('%B %d, %Y'),
         }
         
-        # Render HTML template
         template = get_template('analyzer/pdf_report.html')
         html = template.render(context)
         
-        # Create a PDF
         response = HttpResponse(content_type='application/pdf')
         filename = f"{project.name.replace(' ', '_')}_Analysis_Report.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
-        # Using CreatePDF which is more stable for Django responses
         pisa_status = pisa.CreatePDF(
             io.BytesIO(html.encode("UTF-8")),
             dest=response,
@@ -332,7 +425,6 @@ def download_pdf_report(request, project_id):
     except AnalysisJob.DoesNotExist:
         return HttpResponse("No completed analysis found for this project.", status=404)
     except Exception as e:
-        # Return the error message to help debugging
         import traceback
         return HttpResponse(f"Internal Error: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status=500)
 
@@ -358,7 +450,6 @@ def restart_project(request, project_id):
     project = get_object_or_404(Project, id=project_id)
     job = get_object_or_404(AnalysisJob, project=project)
 
-    # Clear previous output
     FileSummary.objects.filter(project=project).delete()
     ModuleSummary.objects.filter(project=project).delete()
     ProjectOutput.objects.filter(project=project).delete()
@@ -370,7 +461,6 @@ def restart_project(request, project_id):
     job.completed_at = None
     job.save()
 
-    # Dispatch the task
     if settings.USE_CELERY:
         task = analyze_project.delay(str(job.id))
         job.celery_task_id = task.id
@@ -396,7 +486,6 @@ def resume_project(request, project_id):
     job.completed_at = None
     job.save()
 
-    # Dispatch the task
     if settings.USE_CELERY:
         task = analyze_project.delay(str(job.id))
         job.celery_task_id = task.id
@@ -446,9 +535,9 @@ def api_upload(request):
     content_type = request.content_type or ''
 
     if 'multipart/form-data' in content_type:
-        # ZIP file upload
         zip_file = request.FILES.get('zip_file')
         project_name = request.POST.get('project_name', '')
+        components = request.POST.getlist('components', ALL_COMPONENT_VALUES)
 
         if not zip_file:
             return JsonResponse({'error': 'No ZIP file provided'}, status=400)
@@ -463,9 +552,9 @@ def api_upload(request):
             name=project_name,
             upload_type='zip',
             source_file=zip_file,
+            selected_components=components,
         )
     elif 'application/json' in content_type:
-        # Git URL
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
@@ -473,6 +562,7 @@ def api_upload(request):
 
         git_url = body.get('git_url', '')
         project_name = body.get('project_name', '')
+        components = body.get('components', ALL_COMPONENT_VALUES)
 
         if not git_url:
             return JsonResponse({'error': 'No git_url provided'}, status=400)
@@ -484,6 +574,7 @@ def api_upload(request):
             name=project_name,
             upload_type='git',
             source_url=git_url,
+            selected_components=components,
         )
     else:
         return JsonResponse(
@@ -491,7 +582,6 @@ def api_upload(request):
             status=400,
         )
 
-    # Create and dispatch job
     job = AnalysisJob.objects.create(
         project=project,
         status='pending',
@@ -519,8 +609,6 @@ def api_upload(request):
 def api_status(request, project_id):
     """
     API endpoint to check the analysis status.
-
-    Returns JSON with status, progress, and messages.
     """
     project = get_object_or_404(Project, id=project_id)
     job = get_object_or_404(AnalysisJob, project=project)
@@ -535,6 +623,7 @@ def api_status(request, project_id):
         'started_at': job.started_at.isoformat() if job.started_at else None,
         'completed_at': job.completed_at.isoformat() if job.completed_at else None,
         'total_files': project.total_files,
+        'agent_workers': job.agent_workers,
     })
 
 
@@ -542,8 +631,6 @@ def api_status(request, project_id):
 def api_results(request, project_id):
     """
     API endpoint to fetch analysis results.
-
-    Returns JSON with all generated outputs, file summaries, and module summaries.
     """
     project = get_object_or_404(Project, id=project_id)
     job = get_object_or_404(AnalysisJob, project=project)

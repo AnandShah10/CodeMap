@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>{{ project.name }} Analysis Report</title>
+    <title>{{ section_title }} — {{ project.name }}</title>
     <style>
         @page {
             size: A4;
@@ -50,63 +50,71 @@
             vertical-align: middle;
         }
         #page_header h1 {
-            color: #1e293b;
+            color: #4f46e5;
             margin: 15px 0 0;
-            font-size: 26px;
-            font-weight: 800;
+            font-size: 22px;
+            font-weight: 700;
             text-align: center;
         }
-        #page_header p {
+        #page_header .project-name {
             color: #64748b;
             margin: 4px 0 0;
-            font-size: 12pt;
+            font-size: 11pt;
             text-align: center;
         }
 
-        /* ── Meta Info Box ── */
+        /* ── Meta Info ── */
         .meta {
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             background: #f8fafc;
-            padding: 16px 20px;
+            padding: 12px 16px;
             border-radius: 8px;
-            border: 1px solid #0b0c0cff;
-        }
-        .meta table {
-            width: 100%;
-            border: 1px solid #0b0c0cff;
-        }
-        .meta td {
-            padding: 5px 0;
+            border-left: 4px solid #6366f1;
             font-size: 10pt;
-            border: 1px solid #0b0c0cff;
+            color: #475569;
         }
-        .label {
-            font-weight: 600;
-            color: #64748b;
-            width: 150px;
+        .meta strong {
+            color: #1e293b;
         }
 
-        /* ── Sections ── */
-        .section {
-            margin-bottom: 40px;
-            page-break-inside: avoid;
-        }
-        .section h2 {
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 6px;
-            color: #4f46e5;
-            font-size: 18px;
-            font-weight: 700;
-        }
-
-        /* ── Markdown Content ── */
-        .markdown-content {
+        /* ── Content ── */
+        .content {
             font-size: 10.5pt;
-            text-align: justify;
             line-height: 1.7;
             color: #334155;
         }
-        pre {
+        .content h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #4f46e5;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin: 1.5em 0 0.75em;
+        }
+        .content h2 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #6366f1;
+            margin: 1.25em 0 0.5em;
+        }
+        .content h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 1em 0 0.5em;
+        }
+        .content p {
+            margin-bottom: 0.75em;
+            text-align: justify;
+        }
+        .content ul, .content ol {
+            padding-left: 1.25em;
+            margin-bottom: 0.75em;
+        }
+        .content li {
+            margin-bottom: 0.25em;
+        }
+        .content pre {
             background: #f1f5f9;
             padding: 12px;
             border-radius: 6px;
@@ -115,7 +123,7 @@
             word-wrap: break-word;
             border: 1px solid #e2e8f0;
         }
-        code {
+        .content code {
             font-family: 'JetBrains Mono', 'Fira Code', monospace;
             background: #f1f5f9;
             padding: 2px 5px;
@@ -123,28 +131,35 @@
             font-size: 9pt;
             color: #6366f1;
         }
-
-        /* ── Tables ── */
-        table {
-            width: 100%;
-            margin: 15px 0;
-            border-bottom: 1px solid #e2e8f0;
-            border-right: 1px solid #e2e8f0;
+        .content pre code {
+            background: none;
+            padding: 0;
+            color: #334155;
         }
-        th, td {
-            padding: 8px 12px;
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .content th, .content td {
+            border: 1px solid #e2e8f0;
+            padding: 6px 10px;
             text-align: left;
             font-size: 10pt;
-            border-top: 1px solid #141516ff;
-            border-left: 1px solid #141516ff;
         }
-        th {
+        .content th {
             background-color: #f1f5f9;
             color: #4f46e5;
             font-weight: 600;
             font-size: 9.5pt;
             text-transform: uppercase;
             letter-spacing: 0.03em;
+        }
+        .content blockquote {
+            border-left: 3px solid #6366f1;
+            padding-left: 1em;
+            margin: 1em 0;
+            color: #475569;
         }
 
         /* ── Footer ── */
@@ -194,126 +209,25 @@
                 {% endif %}
             </tr>
         </table>
-        <h1>Project Analysis Report</h1>
-        <p>Comprehensive Documentation & Architecture Report</p>
+        <h1>{{ section_title }}</h1>
+        <p class="project-name">{{ project.name }} — Generated {{ generated_date }}</p>
     </div>
 
     <!-- Repeating static footer frames -->
     <div id="page_footer" style="text-align: center; color: #94a3b8; font-size: 9.5pt; border-top: 1px solid #e2e8f0; padding-top: 10px;">
         <strong>{% if user_profile and user_profile.company_name %}{{ user_profile.company_name }}{% else %}CodeMap{% endif %}</strong> 
-        &nbsp;&nbsp;&bull;&nbsp;&nbsp; {{ project.name }} 
+        &nbsp;&nbsp;&bull;&nbsp;&nbsp; {{ project.name }} - {{ section_title }}
         &nbsp;&nbsp;&bull;&nbsp;&nbsp; Page <pdf:pagenumber> of <pdf:pagecount>
     </div>
 
     <div class="meta">
-        <table>
-            <tr><td class="label">Project Name:</td><td><strong>{{ project.name }}</strong></td></tr>
-            <tr><td class="label">Total Files:</td><td>{{ project.total_files }}</td></tr>
-            <tr><td class="label">Analysis Date:</td><td>{{ generated_date }}</td></tr>
-            <tr><td class="label">Generated By:</td><td>CodeMap AI Engine</td></tr>
-        </table>
+        <strong>Project:</strong> {{ project.name }} &nbsp;|&nbsp;
+        <strong>Files:</strong> {{ project.total_files }} &nbsp;|&nbsp;
+        <strong>Section:</strong> {{ section_title }}
     </div>
 
-    {% if outputs.overview %}
-    <div class="section">
-        <h2>Project Overview</h2>
-        <div class="markdown-content">
-            {{ outputs.overview|safe }}
-        </div>
-    </div>
-    {% endif %}
-
-    {% if outputs.architecture %}
-    <div class="section">
-        <h2>Architecture Analysis</h2>
-        <div class="markdown-content">
-            {{ outputs.architecture|safe }}
-        </div>
-    </div>
-    {% endif %}
-
-    {% if outputs.workflow %}
-    <div class="section">
-        <h2>Workflow & Logic</h2>
-        <div class="markdown-content">
-            {{ outputs.workflow|safe }}
-        </div>
-    </div>
-    {% endif %}
-
-    {% if outputs.user_manual %}
-    <div class="section">
-        <h2>User Manual</h2>
-        <div class="markdown-content">
-            {{ outputs.user_manual|safe }}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Page Break for Appendix -->
-    <div style="page-break-before: always;"></div>
-
-    <div class="section">
-        <h2>5. Module Summaries</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 30%;">Module Path</th>
-                    <th style="width: 10%;">Files</th>
-                    <th>Summary</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for module in module_summaries %}
-                <tr>
-                    <td><code>{{ module.module_path }}</code></td>
-                    <td>{{ module.file_count }}</td>
-                    <td>{{ module.summary }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="3">No module summaries found.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <div class="section">
-        <h2>6. File Breakdown</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 30%;">File Path</th>
-                    <th style="width: 15%;">Language</th>
-                    <th>Summary</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for file in file_summaries %}
-                <tr>
-                    <td><code>{{ file.file_path }}</code></td>
-                    <td>{{ file.language }}</td>
-                    <td>{{ file.summary }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="3">No file summaries found.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <div style="page-break-before: always;"></div>
-
-    <div class="section">
-        <h2>7. System Architecture Diagrams (Source)</h2>
-        <p><i>Note: The following diagrams are provided in Mermaid.js syntax for technical reference.</i></p>
-        {% for diagram in diagrams %}
-        <div style="margin-bottom: 30px;">
-            <h3 style="color: #6366f1;">{{ diagram.get_output_type_display }}</h3>
-            <pre>{{ diagram.content }}</pre>
-        </div>
-        {% empty %}
-        <p>No diagrams available for this project.</p>
-        {% endfor %}
+    <div class="content">
+        {{ html_content|safe }}
     </div>
 </body>
 </html>

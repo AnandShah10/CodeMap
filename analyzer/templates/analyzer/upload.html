@@ -66,6 +66,129 @@
             {% endif %}
         </div>
 
+        <!-- Component Filter -->
+        <div class="form-group" id="component-filter">
+            <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Analysis Components</span>
+                <button type="button" id="toggle-all-btn" class="btn-toggle-all" onclick="toggleAllComponents()">Deselect All</button>
+            </label>
+            <p class="form-hint" style="margin-bottom: 1rem;">Choose which outputs to generate. All are selected by default.</p>
+
+            <div class="component-grid">
+                <!-- Documentation Section -->
+                <div class="component-group">
+                    <div class="component-group-title">📄 Documentation</div>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="overview" checked>
+                        <span class="component-label">Project Overview</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="architecture" checked>
+                        <span class="component-label">Architecture Analysis</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="workflow" checked>
+                        <span class="component-label">Workflow & Logic</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="user_manual" checked>
+                        <span class="component-label">User Manual</span>
+                    </label>
+                </div>
+
+                <!-- UML Structural -->
+                <div class="component-group">
+                    <div class="component-group-title">🏗️ UML Structural</div>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="class_diagram" checked>
+                        <span class="component-label">Class Diagram</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="object_diagram" checked>
+                        <span class="component-label">Object Diagram</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="component_diagram" checked>
+                        <span class="component-label">Component Diagram</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="composite_structure_diagram" checked>
+                        <span class="component-label">Composite Structure</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="package_diagram" checked>
+                        <span class="component-label">Package Diagram</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="deployment_diagram" checked>
+                        <span class="component-label">Deployment Diagram</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="profile_diagram" checked>
+                        <span class="component-label">Profile Diagram</span>
+                    </label>
+                </div>
+
+                <!-- UML Behavioral -->
+                <div class="component-group">
+                    <div class="component-group-title">🔄 UML Behavioral</div>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="usecase_diagram" checked>
+                        <span class="component-label">Use Case Diagram</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="activity_diagram" checked>
+                        <span class="component-label">Activity Diagram</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="state_diagram" checked>
+                        <span class="component-label">State Machine</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="sequence_diagram" checked>
+                        <span class="component-label">Sequence Diagram</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="communication_diagram" checked>
+                        <span class="component-label">Communication</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="interaction_overview_diagram" checked>
+                        <span class="component-label">Interaction Overview</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="timing_diagram" checked>
+                        <span class="component-label">Timing Diagram</span>
+                    </label>
+                </div>
+
+                <!-- Non-UML -->
+                <div class="component-group">
+                    <div class="component-group-title">📊 Non-UML & Modern</div>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="er_diagram" checked>
+                        <span class="component-label">ER Diagram (ERD)</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="c4_context_diagram" checked>
+                        <span class="component-label">C4 System Context</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="workflow_flowchart" checked>
+                        <span class="component-label">Workflow Flowchart</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="mindmap" checked>
+                        <span class="component-label">Mind Map</span>
+                    </label>
+                    <label class="component-item">
+                        <input type="checkbox" name="components" value="project_structure" checked>
+                        <span class="component-label">Project Structure</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <!-- Non-field errors -->
         {% if form.non_field_errors %}
         <div class="alert alert-error">
@@ -82,6 +205,77 @@
 </div>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+    .component-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .component-group {
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+    }
+    .component-group-title {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--accent-secondary);
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .component-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        transition: color 0.15s;
+    }
+    .component-item:hover {
+        color: var(--text-primary);
+    }
+    .component-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent-primary);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .component-label {
+        user-select: none;
+    }
+    .btn-toggle-all {
+        background: none;
+        border: 1px solid var(--border-color);
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--accent-secondary);
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        transition: all 0.15s;
+        font-family: var(--font-sans);
+    }
+    .btn-toggle-all:hover {
+        background: var(--accent-glow);
+        border-color: var(--accent-primary);
+    }
+
+    @media (max-width: 768px) {
+        .component-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -93,7 +287,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('zip-file');
     const fileNameDisplay = document.getElementById('file-name');
 
-    // Toggle sections based on upload type
     function toggleSections() {
         if (typeZip.checked) {
             zipSection.style.display = 'block';
@@ -108,7 +301,6 @@ document.addEventListener('DOMContentLoaded', function() {
     typeGit.addEventListener('change', toggleSections);
     toggleSections();
 
-    // File input display
     fileInput.addEventListener('change', function() {
         if (this.files.length > 0) {
             fileNameDisplay.textContent = '📎 ' + this.files[0].name;
@@ -116,7 +308,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Drag and drop
     ['dragenter', 'dragover'].forEach(event => {
         dropZone.addEventListener(event, function(e) {
             e.preventDefault();
@@ -140,12 +331,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Submit loading state
     document.getElementById('upload-form').addEventListener('submit', function() {
         const btn = document.getElementById('submit-btn');
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner" style="width:20px;height:20px;border-width:2px;"></span> Uploading...';
     });
 });
+
+function toggleAllComponents() {
+    const checkboxes = document.querySelectorAll('input[name="components"]');
+    const btn = document.getElementById('toggle-all-btn');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+    btn.textContent = allChecked ? 'Select All' : 'Deselect All';
+}
 </script>
 {% endblock %}

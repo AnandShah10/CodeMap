@@ -6,6 +6,41 @@ from django import forms
 from .models import Project
 
 
+# Component choices for the analysis filter
+COMPONENT_CHOICES = [
+    # Documentation
+    ('overview', 'Project Overview'),
+    ('architecture', 'Architecture Analysis'),
+    ('workflow', 'Workflow & Logic'),
+    ('user_manual', 'User Manual'),
+    # UML Structural Diagrams
+    ('class_diagram', 'Class Diagram'),
+    ('object_diagram', 'Object Diagram'),
+    ('component_diagram', 'Component Diagram'),
+    ('composite_structure_diagram', 'Composite Structure Diagram'),
+    ('package_diagram', 'Package Diagram'),
+    ('deployment_diagram', 'Deployment Diagram'),
+    ('profile_diagram', 'Profile Diagram'),
+    # UML Behavioral Diagrams
+    ('usecase_diagram', 'Use Case Diagram'),
+    ('activity_diagram', 'Activity Diagram'),
+    ('state_diagram', 'State Machine Diagram'),
+    ('sequence_diagram', 'Sequence Diagram'),
+    ('communication_diagram', 'Communication Diagram'),
+    ('interaction_overview_diagram', 'Interaction Overview Diagram'),
+    ('timing_diagram', 'Timing Diagram'),
+    # Non-UML Diagrams
+    ('er_diagram', 'ER Diagram (ERD)'),
+    ('c4_context_diagram', 'C4 System Context'),
+    ('workflow_flowchart', 'Workflow Flowchart'),
+    ('mindmap', 'Mind Map'),
+    ('project_structure', 'Project Structure'),
+]
+
+# All component values for default-all behavior
+ALL_COMPONENT_VALUES = [c[0] for c in COMPONENT_CHOICES]
+
+
 class ProjectUploadForm(forms.Form):
     """
     Form for uploading a project for analysis.
@@ -13,6 +48,8 @@ class ProjectUploadForm(forms.Form):
     Supports two modes:
     - ZIP file upload
     - Git repository URL
+
+    Includes a component filter to select which outputs to generate.
     """
 
     UPLOAD_TYPE_CHOICES = [
@@ -53,6 +90,15 @@ class ProjectUploadForm(forms.Form):
         }),
         help_text='Enter the full URL of the Git repository.',
     )
+    components = forms.MultipleChoiceField(
+        choices=COMPONENT_CHOICES,
+        initial=ALL_COMPONENT_VALUES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'component-checkbox',
+        }),
+        help_text='Select which outputs to generate. All selected by default.',
+    )
 
     def clean(self):
         """Validate that the correct fields are provided based on upload type."""
@@ -80,14 +126,50 @@ class ProjectUploadForm(forms.Form):
         # Auto-derive project name
         if not cleaned_data.get('project_name'):
             if upload_type == 'zip' and zip_file:
-                # Remove .zip extension
                 name = zip_file.name.rsplit('.', 1)[0]
                 cleaned_data['project_name'] = name
             elif upload_type == 'git' and git_url:
-                # Extract repo name from URL
                 name = git_url.rstrip('/').rsplit('/', 1)[-1]
                 if name.endswith('.git'):
                     name = name[:-4]
                 cleaned_data['project_name'] = name
 
+        # Default components to all if none selected
+        if not cleaned_data.get('components'):
+            cleaned_data['components'] = ALL_COMPONENT_VALUES
+
         return cleaned_data
+        
+from .models import UserProfile
+
+class UserProfileForm(forms.ModelForm):
+    company_name = forms.CharField(
+        max_length=255, 
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Enter Company Name'})
+    )
+    company_logo = forms.ImageField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'file-input', 'accept': 'image/*'})
+    )
+    logo_position = forms.ChoiceField(
+        choices=UserProfile.LOGO_POSITION_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-input'})
+    )
+    logo_size = forms.IntegerField(
+        required=False,
+        initial=60,
+        min_value=20, max_value=200,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 60'})
+    )
+    name_size = forms.IntegerField(
+        required=False,
+        initial=28,
+        min_value=12, max_value=72,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 28'})
+    )
+
+    class Meta:
+        model = UserProfile
+        fields = ['company_name', 'company_logo', 'logo_position', 'logo_size', 'name_size']

@@ -37,6 +37,24 @@ class Project(models.Model):
         help_text="Local filesystem path to the extracted/cloned project"
     )
     total_files = models.IntegerField(default=0, help_text="Number of relevant files found")
+
+    # Components the user selected for analysis (default: all)
+    ALL_COMPONENTS = [
+        'overview', 'architecture', 'workflow', 'user_manual',
+        'class_diagram', 'object_diagram', 'component_diagram',
+        'composite_structure_diagram', 'package_diagram', 'deployment_diagram',
+        'profile_diagram', 'usecase_diagram', 'activity_diagram',
+        'state_diagram', 'sequence_diagram', 'communication_diagram',
+        'interaction_overview_diagram', 'timing_diagram',
+        'er_diagram', 'c4_context_diagram', 'workflow_flowchart',
+        'mindmap', 'project_structure',
+    ]
+    selected_components = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of output components to generate. Empty means all.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,6 +99,9 @@ class AnalysisJob(models.Model):
     error_message = models.TextField(blank=True, default='')
     started_at = models.DateTimeField(blank=True, null=True)
     completed_at = models.DateTimeField(blank=True, null=True)
+    agent_workers = models.IntegerField(
+        default=1, help_text="Number of parallel AI agents used"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -211,3 +232,36 @@ class EmailOTP(models.Model):
 
     def __str__(self):
         return f"{self.email} - {self.otp}"
+
+
+# ── User Profile for Company Identity ─────────────────────────────
+class UserProfile(models.Model):
+    LOGO_POSITION_CHOICES = [
+        ('left', 'Logo Left, Name Right'),
+        ('right', 'Name Left, Logo Right'),
+        ('center', 'Centered Stacked'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    company_name = models.CharField(max_length=255, blank=True, default='')
+    company_logo = models.ImageField(upload_to='company_logos/', blank=True, null=True)
+    logo_position = models.CharField(max_length=10, choices=LOGO_POSITION_CHOICES, default='right')
+    logo_size = models.IntegerField(default=60, help_text="Height of logo in pixels")
+    name_size = models.IntegerField(default=28, help_text="Font size of name in pixels")
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile"
+
+# Signal handlers to auto-create and save UserProfile when User is created
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if hasattr(instance, 'profile'):
+        instance.profile.save()

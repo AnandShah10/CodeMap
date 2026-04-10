@@ -80,6 +80,12 @@
             {% if project.total_files %}
                 <p>Files Found: {{ project.total_files }}</p>
             {% endif %}
+            {% if job.agent_workers > 1 %}
+                <p>⚡ Processing with <strong>{{ job.agent_workers }} parallel agents</strong></p>
+            {% endif %}
+            {% if project.selected_components %}
+                <p>Components: {{ project.selected_components|length }} selected</p>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -98,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const audioError = new Audio('https://assets.mixkit.co/active_storage/sfx/2864/2864-preview.mp3');
     let hasNotified = false;
 
-    function requestNotificationPermission() {
+    window.requestNotificationPermission = function() {
         Notification.requestPermission().then(permission => {
             if (permission === "granted") {
                 const hint = document.getElementById('notification-hint');
@@ -106,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 new Notification("Notifications Enabled", { body: "You will receive an alert once the analysis is ready." });
             }
         });
-    }
+    };
 
     if ("Notification" in window) {
         if (Notification.permission === "default") {
