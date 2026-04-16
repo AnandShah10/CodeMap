@@ -22,18 +22,18 @@
             font-family: 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
             color: #1e293b;
             line-height: 1.6;
-            font-size: 11pt;
+            font-size: {{ user_profile.body_font_size|default:11 }}pt;
         }
 
         /* ── Header with Logo ── */
         #page_header {
             padding-bottom: 15px;
-            border-bottom: 3px solid #4f46e5;
+            border-bottom: 3px solid {{ user_profile.header_color|default:'#4f46e5' }};
         }
         #page_header .logo-icon {
             width: 36px;
             height: 36px;
-            background: #4f46e5; /* Fallback for xhtml2pdf */
+            background: {{ user_profile.header_color|default:'#4f46e5' }};
             border-radius: 8px;
             display: inline-block;
             text-align: center;
@@ -94,8 +94,8 @@
         .section h2 {
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 6px;
-            color: #4f46e5;
-            font-size: 18px;
+            color: {{ user_profile.header_color|default:'#4f46e5' }};
+            font-size: {{ user_profile.heading_font_size|default:18 }}px;
             font-weight: 700;
         }
 
@@ -140,7 +140,7 @@
         }
         th {
             background-color: #f1f5f9;
-            color: #4f46e5;
+            color: {{ user_profile.header_color|default:'#4f46e5' }};
             font-weight: 600;
             font-size: 9.5pt;
             text-transform: uppercase;
@@ -194,15 +194,15 @@
                 {% endif %}
             </tr>
         </table>
-        <h1>Project Analysis Report</h1>
-        <p>Comprehensive Documentation & Architecture Report</p>
+        <h1>{% if user_profile.header_title %}{{ user_profile.header_title }}{% else %}Project Analysis Report{% endif %}</h1>
+        <p>{% if user_profile.header_subtitle %}{{ user_profile.header_subtitle }}{% else %}Comprehensive Documentation &amp; Architecture Report{% endif %}</p>
     </div>
 
     <!-- Repeating static footer frames -->
     <div id="page_footer" style="text-align: center; color: #94a3b8; font-size: 9.5pt; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-        <strong>{% if user_profile and user_profile.company_name %}{{ user_profile.company_name }}{% else %}CodeMap{% endif %}</strong> 
+        <strong>{% if user_profile and user_profile.footer_text %}{{ user_profile.footer_text }}{% elif user_profile and user_profile.company_name %}{{ user_profile.company_name }}{% else %}CodeMap{% endif %}</strong> 
         &nbsp;&nbsp;&bull;&nbsp;&nbsp; {{ project.name }} 
-        &nbsp;&nbsp;&bull;&nbsp;&nbsp; Page <pdf:pagenumber> of <pdf:pagecount>
+        {% if user_profile.show_page_numbers %}&nbsp;&nbsp;&bull;&nbsp;&nbsp; Page <pdf:pagenumber> of <pdf:pagecount>{% endif %}
     </div>
 
     <div class="meta">

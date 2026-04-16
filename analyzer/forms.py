@@ -152,24 +152,60 @@ class UserProfileForm(forms.ModelForm):
         required=False,
         widget=forms.ClearableFileInput(attrs={'class': 'file-input', 'accept': 'image/*'})
     )
+
+    class Meta:
+        model = UserProfile
+        fields = ['company_name', 'company_logo']
+
+
+class PDFSettingsForm(forms.ModelForm):
     logo_position = forms.ChoiceField(
         choices=UserProfile.LOGO_POSITION_CHOICES,
         required=False,
-        widget=forms.Select(attrs={'class': 'form-input'})
+        widget=forms.Select(attrs={'class': 'form-input', 'id': 'id_logo_position'})
     )
     logo_size = forms.IntegerField(
-        required=False,
-        initial=60,
-        min_value=20, max_value=200,
-        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 60'})
+        required=False, initial=60, min_value=20, max_value=200,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'id': 'id_logo_size'})
     )
     name_size = forms.IntegerField(
-        required=False,
-        initial=28,
-        min_value=12, max_value=72,
-        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 28'})
+        required=False, initial=28, min_value=12, max_value=72,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'id': 'id_name_size'})
+    )
+    header_color = forms.CharField(
+        max_length=7, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'type': 'color', 'id': 'id_header_color'})
+    )
+    header_title = forms.CharField(
+        max_length=255, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Project Analysis Report', 'id': 'id_header_title'})
+    )
+    header_subtitle = forms.CharField(
+        max_length=255, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Comprehensive Documentation & Architecture Report', 'id': 'id_header_subtitle'})
+    )
+    footer_text = forms.CharField(
+        max_length=255, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Leave blank to use company name', 'id': 'id_footer_text'})
+    )
+    show_page_numbers = forms.BooleanField(
+        required=False, initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_show_page_numbers'})
+    )
+    body_font_size = forms.IntegerField(
+        required=False, initial=11, min_value=8, max_value=16,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'id': 'id_body_font_size'})
+    )
+    heading_font_size = forms.IntegerField(
+        required=False, initial=18, min_value=12, max_value=36,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'id': 'id_heading_font_size'})
     )
 
     class Meta:
         model = UserProfile
-        fields = ['company_name', 'company_logo', 'logo_position', 'logo_size', 'name_size']
+        fields = [
+            'logo_position', 'logo_size', 'name_size',
+            'header_color', 'header_title', 'header_subtitle',
+            'footer_text', 'show_page_numbers',
+            'body_font_size', 'heading_font_size',
+        ]

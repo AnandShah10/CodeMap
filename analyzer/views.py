@@ -19,7 +19,7 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 
-from .forms import ProjectUploadForm, ALL_COMPONENT_VALUES, UserProfileForm
+from .forms import ProjectUploadForm, ALL_COMPONENT_VALUES, UserProfileForm, PDFSettingsForm
 from .models import AnalysisJob, FileSummary, ModuleSummary, Project, ProjectOutput, UserProfile
 from .tasks import analyze_project
 from .services.task_queue import background_queue
@@ -42,8 +42,6 @@ def landing(request):
 @login_required
 def profile_view(request):
     """View and edit user profile (company name, logo)."""
-    # Using UserProfile.objects.get_or_create to ensure backward compatibility
-    # for users created before the signal was active.
     profile, created = UserProfile.objects.get_or_create(user=request.user)
     
     if request.method == 'POST':
@@ -54,7 +52,23 @@ def profile_view(request):
     else:
         form = UserProfileForm(instance=profile)
         
-    return render(request, 'analyzer/profile.html', {'form': form})
+    return render(request, 'analyzer/profile.html', {'form': form, 'profile': profile})
+
+
+@login_required
+def pdf_settings_view(request):
+    """Dedicated PDF report customization page with live preview."""
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    
+    if request.method == 'POST':
+        form = PDFSettingsForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            return redirect('analyzer:pdf_settings')
+    else:
+        form = PDFSettingsForm(instance=profile)
+        
+    return render(request, 'analyzer/pdf_settings.html', {'form': form, 'profile': profile})
 
 
 @login_required

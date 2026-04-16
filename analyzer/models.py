@@ -249,6 +249,15 @@ class UserProfile(models.Model):
     logo_size = models.IntegerField(default=60, help_text="Height of logo in pixels")
     name_size = models.IntegerField(default=28, help_text="Font size of name in pixels")
 
+    # PDF Customization
+    header_color = models.CharField(max_length=7, default='#4f46e5', help_text="Hex color for header accent")
+    header_title = models.CharField(max_length=255, blank=True, default='Project Analysis Report', help_text="Custom report title")
+    header_subtitle = models.CharField(max_length=255, blank=True, default='Comprehensive Documentation & Architecture Report')
+    footer_text = models.CharField(max_length=255, blank=True, default='', help_text="Custom footer text (leave blank for company name)")
+    show_page_numbers = models.BooleanField(default=True)
+    body_font_size = models.IntegerField(default=11, help_text="Body text font size in pt")
+    heading_font_size = models.IntegerField(default=18, help_text="Section heading font size in px")
+
     def __str__(self):
         return f"{self.user.username}'s Profile"
 

@@ -15,6 +15,7 @@ urlpatterns = [
     path('upload/', views.upload_project, name='upload'),
     path('', views.landing, name='landing'),
     path('profile/', views.profile_view, name='profile'),
+    path('pdf-settings/', views.pdf_settings_view, name='pdf_settings'),
     path('projects/', views.project_list, name='project_list'),
     path('projects/<uuid:project_id>/status/', views.project_status, name='project_status'),
     path('projects/<uuid:project_id>/results/', views.project_results, name='project_results'),

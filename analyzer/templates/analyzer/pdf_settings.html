@@ -1,0 +1,427 @@
+{% extends 'analyzer/base.html' %}
+{% load static %}
+
+{% block title %}PDF Report Settings - CodeMap{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1>📄 PDF Report Customization</h1>
+        <p>Fine-tune every aspect of your generated PDF reports with a real-time preview.</p>
+    </div>
+    <a href="{% url 'analyzer:profile' %}" class="btn btn-secondary">← Back to Profile</a>
+</div>
+
+<div class="pdf-settings-layout">
+    <!-- Left: Settings Panel -->
+    <div class="settings-panel">
+        <form method="post" id="pdf-settings-form">
+            {% csrf_token %}
+
+            <!-- Header Section -->
+            <div class="settings-group">
+                <h3 class="settings-group-title">🎨 Header Branding</h3>
+
+                <div class="setting-row">
+                    <label for="id_logo_position" class="setting-label">Layout Position</label>
+                    {{ form.logo_position }}
+                </div>
+                <div class="setting-row-double">
+                    <div>
+                        <label for="id_logo_size" class="setting-label">Logo Size (px)</label>
+                        {{ form.logo_size }}
+                    </div>
+                    <div>
+                        <label for="id_name_size" class="setting-label">Name Size (px)</label>
+                        {{ form.name_size }}
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label for="id_header_color" class="setting-label">Accent Color</label>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        {{ form.header_color }}
+                        <span class="color-preview-text" id="color-hex-display">{{ form.header_color.value }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Title Section -->
+            <div class="settings-group">
+                <h3 class="settings-group-title">📝 Report Title</h3>
+                <div class="setting-row">
+                    <label for="id_header_title" class="setting-label">Title</label>
+                    {{ form.header_title }}
+                </div>
+                <div class="setting-row">
+                    <label for="id_header_subtitle" class="setting-label">Subtitle</label>
+                    {{ form.header_subtitle }}
+                </div>
+            </div>
+
+            <!-- Typography Section -->
+            <div class="settings-group">
+                <h3 class="settings-group-title">🔤 Typography</h3>
+                <div class="setting-row-double">
+                    <div>
+                        <label for="id_body_font_size" class="setting-label">Body Font (pt)</label>
+                        {{ form.body_font_size }}
+                    </div>
+                    <div>
+                        <label for="id_heading_font_size" class="setting-label">Heading Size (px)</label>
+                        {{ form.heading_font_size }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Section -->
+            <div class="settings-group">
+                <h3 class="settings-group-title">📎 Footer</h3>
+                <div class="setting-row">
+                    <label for="id_footer_text" class="setting-label">Custom Footer Text</label>
+                    {{ form.footer_text }}
+                    <span class="form-text text-muted" style="font-size: 0.8rem;">Leave blank to use company name.</span>
+                </div>
+                <div class="setting-row" style="display: flex; align-items: center; gap: 0.75rem;">
+                    {{ form.show_page_numbers }}
+                    <label for="id_show_page_numbers" class="setting-label" style="margin: 0;">Show Page Numbers</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold" style="margin-top: 1.5rem;">
+                <i class="fas fa-save me-2"></i> Save PDF Settings
+            </button>
+        </form>
+    </div>
+
+    <!-- Right: Live Preview -->
+    <div class="preview-panel">
+        <div class="preview-sticky">
+            <h3 class="preview-title">Live Preview</h3>
+            <div class="preview-frame" id="pdf-preview">
+                <!-- Simulated A4 Page -->
+                <div class="preview-page">
+                    <!-- Header -->
+                    <div class="preview-header" id="preview-header">
+                        <div class="preview-header-row" id="preview-header-row">
+                            <span class="preview-company-name" id="preview-name">{{ profile.company_name|default:"CodeMap" }}</span>
+                            <span class="preview-logo-placeholder" id="preview-logo">
+                                {% if profile.company_logo %}
+                                    <img src="{{ profile.company_logo.url }}" id="preview-logo-img" alt="Logo">
+                                {% else %}
+                                    ⬡
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="preview-header-title" id="preview-title-text">{{ profile.header_title|default:"Project Analysis Report" }}</div>
+                        <div class="preview-header-subtitle" id="preview-subtitle-text">{{ profile.header_subtitle|default:"Comprehensive Documentation & Architecture Report" }}</div>
+                    </div>
+
+                    <!-- Body Content -->
+                    <div class="preview-body" id="preview-body">
+                        <div class="preview-meta-box">
+                            <div><strong style="color: #64748b;">Project Name:</strong> Sample Project</div>
+                            <div><strong style="color: #64748b;">Total Files:</strong> 42</div>
+                            <div><strong style="color: #64748b;">Analysis Date:</strong> April 10, 2026</div>
+                        </div>
+
+                        <div class="preview-section">
+                            <h2 class="preview-heading" id="preview-heading-sample">Project Overview</h2>
+                            <p class="preview-text" id="preview-body-sample">
+                                This project implements a comprehensive web application with integrated AI-powered code analysis, 
+                                generating documentation, architectural diagrams, and workflow breakdowns...
+                            </p>
+                        </div>
+
+                        <div class="preview-section">
+                            <h2 class="preview-heading" id="preview-heading-sample2">Architecture Analysis</h2>
+                            <p class="preview-text" id="preview-body-sample2">
+                                The system uses a modular Django-based architecture with Celery for background task processing 
+                                and a multi-agent pipeline for parallel AI analysis...
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="preview-footer" id="preview-footer">
+                        <span id="preview-footer-text">{{ profile.company_name|default:"CodeMap" }}</span>
+                        <span> • Sample Project</span>
+                        <span id="preview-pagenumber"> • Page 1 of 3</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+    .pdf-settings-layout {
+        display: grid;
+        grid-template-columns: 420px 1fr;
+        gap: 2rem;
+        align-items: start;
+    }
+    @media (max-width: 1100px) {
+        .pdf-settings-layout { grid-template-columns: 1fr; }
+    }
+
+    /* Settings Panel */
+    .settings-panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+    }
+    .settings-group {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .settings-group:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .settings-group-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--accent-primary);
+        margin-bottom: 1rem;
+        letter-spacing: 0.02em;
+    }
+    .setting-row {
+        margin-bottom: 1rem;
+    }
+    .setting-row:last-child { margin-bottom: 0; }
+    .setting-label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 0.35rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .setting-row-double {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .color-preview-text {
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    /* Preview */
+    .preview-panel {
+        position: relative;
+    }
+    .preview-sticky {
+        position: sticky;
+        top: 2rem;
+    }
+    .preview-title {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+    }
+    .preview-frame {
+        background: #f1f5f9;
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+    .preview-page {
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+        padding: 0;
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    /* Preview Header */
+    .preview-header {
+        padding: 20px 24px 14px;
+        border-bottom: 3px solid #4f46e5;
+    }
+    .preview-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .preview-header-row.center-layout {
+        flex-direction: column;
+        text-align: center;
+    }
+    .preview-company-name {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 18px;
+    }
+    .preview-logo-placeholder {
+        font-size: 28px;
+        color: #4f46e5;
+    }
+    .preview-logo-placeholder img {
+        max-height: 40px;
+        max-width: 120px;
+        object-fit: contain;
+    }
+    .preview-header-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #1e293b;
+        text-align: center;
+    }
+    .preview-header-subtitle {
+        font-size: 9px;
+        color: #64748b;
+        text-align: center;
+        margin-top: 2px;
+    }
+
+    /* Preview Body */
+    .preview-body {
+        flex: 1;
+        padding: 20px 24px;
+    }
+    .preview-meta-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+        font-size: 8px;
+        color: #334155;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+    .preview-section { margin-bottom: 14px; }
+    .preview-heading {
+        font-size: 12px;
+        font-weight: 700;
+        color: #4f46e5;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 3px;
+        margin-bottom: 6px;
+    }
+    .preview-text {
+        font-size: 8px;
+        color: #334155;
+        line-height: 1.6;
+    }
+
+    /* Preview Footer */
+    .preview-footer {
+        padding: 8px 24px;
+        font-size: 7px;
+        color: #94a3b8;
+        border-top: 1px solid #e2e8f0;
+        text-align: center;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fields = {
+        logoPosition: document.getElementById('id_logo_position'),
+        logoSize: document.getElementById('id_logo_size'),
+        nameSize: document.getElementById('id_name_size'),
+        headerColor: document.getElementById('id_header_color'),
+        headerTitle: document.getElementById('id_header_title'),
+        headerSubtitle: document.getElementById('id_header_subtitle'),
+        footerText: document.getElementById('id_footer_text'),
+        showPageNumbers: document.getElementById('id_show_page_numbers'),
+        bodyFontSize: document.getElementById('id_body_font_size'),
+        headingFontSize: document.getElementById('id_heading_font_size'),
+    };
+
+    const preview = {
+        header: document.getElementById('preview-header'),
+        headerRow: document.getElementById('preview-header-row'),
+        name: document.getElementById('preview-name'),
+        logo: document.getElementById('preview-logo'),
+        titleText: document.getElementById('preview-title-text'),
+        subtitleText: document.getElementById('preview-subtitle-text'),
+        footer: document.getElementById('preview-footer'),
+        footerText: document.getElementById('preview-footer-text'),
+        pagenumber: document.getElementById('preview-pagenumber'),
+        headingSample: document.getElementById('preview-heading-sample'),
+        headingSample2: document.getElementById('preview-heading-sample2'),
+        bodySample: document.getElementById('preview-body-sample'),
+        bodySample2: document.getElementById('preview-body-sample2'),
+        colorHex: document.getElementById('color-hex-display'),
+    };
+
+    const companyName = "{{ profile.company_name|default:'CodeMap'|escapejs }}";
+
+    function updatePreview() {
+        const pos = fields.logoPosition.value;
+        const accentColor = fields.headerColor.value || '#4f46e5';
+        const logoSize = (parseInt(fields.logoSize.value) || 60) * 0.65; // scale down for preview
+        const nameSize = (parseInt(fields.nameSize.value) || 28) * 0.65;
+        const bodyFS = parseInt(fields.bodyFontSize.value) || 11;
+        const headingFS = parseInt(fields.headingFontSize.value) || 18;
+
+        // Layout
+        preview.headerRow.className = 'preview-header-row';
+        if (pos === 'left') {
+            preview.headerRow.style.flexDirection = 'row-reverse';
+            preview.headerRow.classList.remove('center-layout');
+        } else if (pos === 'center') {
+            preview.headerRow.style.flexDirection = 'column';
+            preview.headerRow.classList.add('center-layout');
+        } else {
+            preview.headerRow.style.flexDirection = 'row';
+            preview.headerRow.classList.remove('center-layout');
+        }
+
+        // Sizes
+        preview.name.style.fontSize = nameSize + 'px';
+        const logoImg = document.getElementById('preview-logo-img');
+        if (logoImg) logoImg.style.maxHeight = logoSize + 'px';
+        preview.logo.style.fontSize = logoSize + 'px';
+
+        // Color
+        preview.header.style.borderBottom = '3px solid ' + accentColor;
+        preview.headingSample.style.color = accentColor;
+        preview.headingSample2.style.color = accentColor;
+        preview.colorHex.textContent = accentColor;
+
+        // Title & subtitle
+        preview.titleText.textContent = fields.headerTitle.value || 'Project Analysis Report';
+        preview.subtitleText.textContent = fields.headerSubtitle.value || 'Comprehensive Documentation & Architecture Report';
+
+        // Footer
+        preview.footerText.textContent = fields.footerText.value || companyName;
+        preview.pagenumber.style.display = fields.showPageNumbers.checked ? 'inline' : 'none';
+
+        // Typography
+        const scaledBody = bodyFS * 0.72;
+        const scaledHeading = headingFS * 0.65;
+        preview.bodySample.style.fontSize = scaledBody + 'px';
+        preview.bodySample2.style.fontSize = scaledBody + 'px';
+        preview.headingSample.style.fontSize = scaledHeading + 'px';
+        preview.headingSample2.style.fontSize = scaledHeading + 'px';
+    }
+
+    // Bind live update listeners
+    Object.values(fields).forEach(field => {
+        if (field) {
+            field.addEventListener('input', updatePreview);
+            field.addEventListener('change', updatePreview);
+        }
+    });
+
+    updatePreview();
+});
+</script>
+{% endblock %}
